@@ -32,6 +32,8 @@ constraint (
   )
 );
 
+
+
 % forzare la diagonale a zero, per evitare loop nei punti di delivery
 constraint (
   forall (k in 1..m) (
@@ -58,6 +60,7 @@ constraint (
     sum(i in 1..n+1, j in 1..n)(x[i,j,k] * S[j]) <= trucks[k]
   )
 );
+
 
 
 %The approach we used to substitute the Circuit constraint used in CP is the
