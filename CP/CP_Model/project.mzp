@@ -1,0 +1,14 @@
+{
+    "openFiles": [
+        "ModelTry.mzn",
+        "data1.dzn"
+    ],
+    "openTab": 1,
+    "projectFiles": [
+        "ModelTry.mzn",
+        "data1.dzn"
+    ],
+    "selectedBuiltinConfigId": "org.gecode.gecode",
+    "selectedBuiltinConfigVersion": "6.3.0",
+    "version": 106
+}

@@ -35,16 +35,12 @@ constraint forall(i in vehicles)
                   (if successor[i,num_clients+1]==num_clients+1 then successor[i,..]=nodes endif);
 %if a vehicle does not leave depot every value of the array must be equal to the index (it does not move)
 
-
-constraint min(j in vehicles)(sum(i in nodes)(distances[i, successor[j,i]])) > 0; 
-
-
 var int: max_dist = max(j in vehicles)(sum(i in nodes)(distances[i, successor[j,i]]));
 
 solve minimize max_dist;
 
 output [
-    "show input = ", show(order), "\n",
+    "Order = ", show(order), "\n",
     "Path = ", show(successor), "\n",
     "Maximum Distance = ", show(max_dist), "\n"
 ];
