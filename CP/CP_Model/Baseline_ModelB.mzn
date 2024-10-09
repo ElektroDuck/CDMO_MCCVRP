@@ -26,31 +26,36 @@ constraint used_couriers = sum(i in CUSTOMER)(last[i]);
 %     - the number of vehicles leaving the depo is equal to the occurency of the depo idx in the pred array
 constraint global_cardinality(pred, NODES, is_pred ++ [used_couriers]);
 
-%
+%3. If a node is predecessor of an another one then both the nodes share the vehicles.
+%   if a -> b then vehicle[a] == vehicle[b]
 constraint forall(i in CUSTOMER)(if pred[i] != num_clients+1 then vehicle[i] == vehicle[pred[i]] endif);
 
 %Requires that the number of distinct values in vehicle should be the number of used couriers
 constraint nvalue(used_couriers, vehicle);
 
-%max number in the vehicle array should be equal to the number of used vehicles
+%4. The max number in the vehicle array must be equal to the number of used vehicles
 constraint max(vehicle) = used_couriers;
 
-%a node cannot be both a predecessor and a last node
+%5. A node can't be predecessor of an another node and last node at the same time
 constraint forall(i in CUSTOMER)(is_pred[i] + last[i] = 1);
 
-%a customer cannot be its own predecessor
-constraint redundant_constraint(forall(i in CUSTOMER)(pred[i] != i));
+%6. A node can't be predecessor of itself
+constraint forall(i in CUSTOMER)(pred[i] != i);
 
-%we need a subtour constraint(single,circular tour)
+%7. Constraint to avoid subtours
+%    - Each node must have an assigned value in the array num_visit
+%    - If the node a is predecessor of the node b then the assigned values in num_visit must satisfy the constrain -> num_visit[a] > num_visit[b] 
+%    - Take an example node c to the path, that is successor of b and predecessor of a (a -> b -> c -> a). There are not gonna be assignable value to  num_visit[c] since: 
+%      - num_visit[c] > num_visit[b], num_visit[a] > num_visit[c] ->  num_visit[a] > num_visit[b] (wrong for definition) 
 constraint forall(i in CUSTOMER)(if pred[i] != num_clients+1 then num_visit[i] > num_visit[pred[i]] endif);
 
-%capacity constraint
+%8. Capacity constraint, the load od each courrier can't exceed the maximum load size of the vehicle
 constraint forall(j in 1..used_couriers)((sum(i in CUSTOMER where vehicle[i]==j)(size[i])) <= capacity[j]);
 
-%Objective function
+%Objective Function
 var int: max_dist = max(j in 1..used_couriers)(sum(i in CUSTOMER where vehicle[i]==j)(distances[pred[i],i] + distances[i,num_clients+1]*last[i]));
 
-
+%Solve by minimizing the max distance travelled
 solve minimize max_dist;
  
 output [
