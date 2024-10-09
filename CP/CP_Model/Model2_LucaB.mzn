@@ -1,48 +1,67 @@
-%MODEL 2
+include "globals.mzn";
 
-%import
+int: num_clients; % Item number
+int: num_vehicles; % Vehicle number
+array [1..num_vehicles] of int: capacity; % Vehicle capacities
+array [1..num_clients] of int: size; % Item sizes (demand)
 
-include "globals.mnz";
+set of int: NODES = 1..num_clients+1;
+set of int: CUSTOMER = 1..num_clients;
+set of int: VEHICLE = 1..num_vehicles;
 
-% Modelling
-int: num_vehicles; %number of vehicles
-int: num_clients; %number of clients
-set of int: nodes = 1..num_clients+1; %nodes of the graph
-set of int: clients = 1..num_clients; %nodes rapresenting clients
-set of int: vehicles = 1..num_vehicles; %set of the vehicles
-array[vehicles] of int: capacity; %capacity of every vehicle
-array[clients] of int: size; %size of every item
-array[nodes, nodes] of int: distances; %matrix of distances between nodes
-%Decision Variables
-array[nodes] of nodes: pred; %what node is the predecessor of the i-th node
-array[nodes] of boolean: last; %if the node is the last of a route
-array[nodes] of boolean: is_pred; %if the node is the predecessor of another (if it is not last)
-array[nodes] of vehicles: vehicle; %which veicle is the one assigned to the i-th item
+array [NODES,NODES] of int: distances;
 
-%Constraints
+array [CUSTOMER] of var NODES: pred;
+array [CUSTOMER] of var 0..1: last;
+array [CUSTOMER] of var 0..1: is_pred;
+array [CUSTOMER] of var VEHICLE: vehicle;
+array [CUSTOMER] of var CUSTOMER: num_visit;
+var VEHICLE: used_couriers;
 
-%All the vehicle must come back to the depo
-num_vehicles = sum(last); 
+%1. Number of used vehicles should be equal to the number of vehicles returning to the depot
+constraint used_couriers = sum(i in CUSTOMER)(last[i]);
 
+%2. Check that: 
+%     - if a customer i has is_pred set to 1 then it is contained exactly once in the pred array
+%     - the number of vehicles leaving the depo is equal to the occurency of the depo idx in the pred array
+constraint global_cardinality(pred, NODES, is_pred ++ [used_couriers]);
 
-array[int] of int: freq_pred = [if i == num_clients+1 then num_vehicles else is_pred[i] endif | i in nodes]; % lower bound array
-constraint global_cardinality(pred, [i | i in vehicles], freq_pred);
+%
+constraint forall(i in CUSTOMER)(if pred[i] != num_clients+1 then vehicle[i] == vehicle[pred[i]] endif);
 
+%Requires that the number of distinct values in vehicle should be the number of used couriers
+constraint nvalue(used_couriers, vehicle);
 
+%max number in the vehicle array should be equal to the number of used vehicles
+constraint max(vehicle) = used_couriers;
 
+%a node cannot be both a predecessor and a last node
+constraint forall(i in CUSTOMER)(is_pred[i] + last[i] = 1);
 
-%possibile redundant constraint
-%The depo must be pred of exactly num_vehicles nodes -> every vehicle starts the route from the depo 
-%Each node must appear at most 1 time in the pred array -> assure that every node has a different pred -> no same pred for 2 different nodes
-array[int] of int: lb = [if i == num_clients+1 then num_vehicles else 0 endif | i in nodes]; % lower bound array
-array[int] of int: ub = [if i == num_clients+1 then num_vehicles else 1 endif | i in nodes]; % upper bound array
-constraint global_cardinality_low_up(pred, [i | i in vehicles], lb, ub);
+%a customer cannot be its own predecessor
+constraint redundant_constraint(forall(i in CUSTOMER)(pred[i] != i));
 
+%we need a subtour constraint(single,circular tour)
+constraint forall(i in CUSTOMER)(if pred[i] != num_clients+1 then num_visit[i] > num_visit[pred[i]] endif);
 
-
+%capacity constraint
+constraint forall(j in 1..used_couriers)((sum(i in CUSTOMER where vehicle[i]==j)(size[i])) <= capacity[j]);
 
 %Objective function
-var int: max_dist = max(j in vehicles)(sum(i in clients where vehicle[i] = j)(distances[pred[i], i] +  (distances[i, num_clients + 1]*last[i] )));
+var int: max_dist = max(j in 1..used_couriers)(sum(i in CUSTOMER where vehicle[i]==j)(distances[pred[i],i] + distances[i,num_clients+1]*last[i]));
+
 
 solve minimize max_dist;
+ 
+output [
+    "predecessor = \t", show(pred), "\n",
+    "num_visit = \t", show(num_visit), "\n",
+    "last = \t\t", show(last), "\n",
+    "is_pred = \t", show(is_pred), "\n",
+    "vehicle = \t", show(vehicle), "\n",
+    "total_couriers = \t", show(num_vehicles), "\n",
+    "used_couriers = \t", show(used_couriers), "\n",
+    "Maximum Distance = \t", show(max_dist), "\n"
+];
+
 
