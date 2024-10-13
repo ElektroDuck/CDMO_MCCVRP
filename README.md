@@ -25,3 +25,17 @@ check if the installation is correct
 ```where python```
 
 the response should be like: .venv\Scripts\python
+
+## Come aggiungere la variabile di minizinc al path windows
+
+la guida sta qui: https://docs.minizinc.dev/en/stable/installation.html#microsoft-windows
+
+é un po un casino ma l'idea é di usare questo comando dal cmd
+```C:\>setx PATH "%PATH%;YOUR_INSTALLATION_FOLDER"```
+
+dove la guida dice che YOUR_INSTALLATION_FOLDER dovrebbe essere tipo ```C:\Program Files\MiniZinc 2.8.7 (bundled)```
+
+con me ha funzionato con ```setx PATH "%PATH%;C:\Program Files\MiniZinc```
+
+
+
