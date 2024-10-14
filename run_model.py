@@ -1,6 +1,5 @@
 import os
-import re
-import json
+import numpy
 import asyncio
 import argparse
 import datetime
@@ -60,6 +59,16 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     instance["size"] = packages_size
     instance["capacity"] = vehicles_capacity
     instance["distances"] = distances
+
+    #crea una funzione apposita per upper e lowe boud
+    matrix_dist=numpy.array(distances) #transform in numpy matrix
+    last_row = matrix_dist[-1, :]  # selects the last row
+    last_column = matrix_dist[:, -1]  # selects the last column
+    result = last_row + last_column
+    low_bound = max(result)
+    up_bound = sum(result)
+    instance["low_bound"] = low_bound
+    instance["up_bound"] = up_bound
 
     #solve the problem
     timeout = timedelta(seconds=timeout_time)
@@ -133,13 +142,8 @@ async def print_intermediate_solutions(instance, timeout):
     print("End status: ", result.status)
 
     print("\nBest Solution:")
-    
-    #statistics = extract_info_from_string(str(result.statistics))
-
-    
 
     ending_status = result.status
-    #elapsed_time = 
 
     print("\n\nInstance Terminated:")
     print(ending_status)
