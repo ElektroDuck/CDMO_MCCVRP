@@ -59,11 +59,11 @@ constraint forall(client in clients)(count([successor[vehicle, client]| vehicle 
 
 % In order to apply the global contraint we need to create a support array that encode the client with the assigned vehicle
 constraint forall(vehicle in vehicles) (
-              forall(client in clients)(
-                 if successor[vehicle, client] != client then
-                    assigned_vehicle[client] = vehicle endif
-              )
-            ); 
+              forall(client in clients where successor[vehicle, client] != client)
+                 (
+                    assigned_vehicle[client] = vehicle
+                 )
+              ); 
 % use the support array in order to use the global constraint that check that  
 % each item i with weight size[i, be put into assigned_vehicle[i] such that the sum of the weights of the items in each vehicle does not exceed the capacity capacity[vehicle].      
 constraint bin_packing_capa(capacity, assigned_vehicle, size);

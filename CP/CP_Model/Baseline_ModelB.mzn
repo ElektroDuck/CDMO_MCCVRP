@@ -55,6 +55,9 @@ constraint forall(j in 1..used_couriers)((sum(i in CUSTOMER where vehicle[i]==j)
 %Objective Function
 var int: max_dist = max(j in 1..used_couriers)(sum(i in CUSTOMER where vehicle[i]==j)(distances[pred[i],i] + distances[i,num_clients+1]*last[i]));
 
+%9. Lower bound constraint
+%constraint max_dist >= max(j in CUSTOMER)(distances[num_clients,j]+distances[j,num_clients]);
+
 %Solve by minimizing the max distance travelled
 solve minimize max_dist;
  
