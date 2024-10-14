@@ -5,7 +5,7 @@ import argparse
 from datetime import timedelta
 from minizinc import Instance, Model, Solver
 
-#python run_model.py --method cp --model Model_A.mzn --instance 1 --solver chuffed
+#python --method CP --model Model_A.mzn --instance 1,3,4 --solver chuffed --timeout 20
 
 BASE_PATH = os.getcwd()
 
