@@ -1,9 +1,11 @@
 import os
+import re
 import json
 import asyncio
 import argparse
+import datetime
 from datetime import timedelta
-from minizinc import Instance, Model, Solver
+from minizinc import Instance, Model, Solver, Status
 
 #python --method CP --model Model_A.mzn --instance 1,3,4 --solver chuffed --timeout 20
 
@@ -61,7 +63,8 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
 
     #solve the problem
     timeout = timedelta(seconds=timeout_time)
-    asyncio.run(print_intermediate_solutions(instance, timeout))
+    result = asyncio.run(print_intermediate_solutions(instance, timeout))
+    return result
 
 def get_cp_model_path(model_name):
 
@@ -73,13 +76,75 @@ def get_cp_model_path(model_name):
 
     return cp_model_path
 
+def string_to_dict(input_str):
+    # Evaluate the string as a Python literal safely
+    result = eval(input_str, {"datetime": datetime, "__builtins__": {}})
+    return result
 
-async def print_intermediate_solutions(instance, timeout=300):
+
+def timedelta_to_string(td):
+    # Extract days, seconds, and microseconds
+    days = td.days
+    seconds = td.seconds
+    microseconds = td.microseconds
+
+    # Calculate hours, minutes, and remaining seconds
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    # Build the output string dynamically
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    if seconds > 0:
+        parts.append(f"{seconds}s")
+    if microseconds > 0:
+        parts.append(f"{microseconds}µs")
+
+    # Join all non-zero components with a space
+    return " ".join(parts)
+
+
+async def print_intermediate_solutions(instance, timeout):
+    last_result = None
     async for result in instance.solutions(intermediate_solutions=True, timeout=timeout):
-        print(f"\nIntermediate Solution:")
-        print(result.solution)
-        
-    return result.statistics
+        if result is not None and result.status is Status.SATISFIED:
+
+            statistics_dict = string_to_dict(str(result.statistics))
+
+            if "time" in statistics_dict.keys():
+                time = timedelta_to_string(statistics_dict["time"])
+                print(f"\n Intermediate Solution found at time {time}:")
+                print(result.solution)
+                print("\nStatistics")
+                print(result.statistics)
+                print("\n")
+
+
+    statistics_dict = string_to_dict(str(result.statistics))
+
+    print("\n\nStatistic on search termination: \n")
+    print("solveTime:  ",  statistics_dict["solveTime"])
+    print("Solutions:  ", statistics_dict["solutions"])
+    print("End status: ", result.status)
+
+    print("\nBest Solution:")
+    
+    #statistics = extract_info_from_string(str(result.statistics))
+
+    
+
+    ending_status = result.status
+    #elapsed_time = 
+
+    print("\n\nInstance Terminated:")
+    print(ending_status)
+
+    return last_result
 
 
 def main():
@@ -119,7 +184,11 @@ def main():
         num_vehicles, num_clients, vehicles_capacity, packages_size, distances = extract_data_from_dat(instance_path)
 
 
-        sol_stat = solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time)
+        result = solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time)
+
+        print("FINITO, RISULTATO: ")
+        print(result)
+        print("*"*50)
 
 if __name__ == "__main__":
     main()
