@@ -187,8 +187,10 @@ def main():
         #extract the data from the dat file
         num_vehicles, num_clients, vehicles_capacity, packages_size, distances = extract_data_from_dat(instance_path)
 
-
-        result = solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time)
+        try:
+            result = solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time)
+        except: 
+            pass
 
         print("FINITO, RISULTATO: ")
         print(result)
