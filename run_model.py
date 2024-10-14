@@ -1,5 +1,7 @@
 import os
+import asyncio
 import argparse
+from datetime import timedelta
 from minizinc import Instance, Model, Solver
 
 #python run_model.py --method cp --model Model_A.mzn --instance 1 --solver chuffed
@@ -31,18 +33,31 @@ def extract_data_from_dat(instance_path, verbose=True):
 
     return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
 
+
+async def print_intermediate_solutions(instance, timeout=300):
+    async for result in instance.solutions(intermediate_solutions=True, timeout=timeout):
+        print("Intermediate Solution:")
+        print(result.solution)
+        
+        print("Statistics:")
+        print(result.statistics)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Script that takes method, model, and instance as input.")
     parser.add_argument('--method', type=str, required=True, help='The method to use')
     parser.add_argument('--model', type=str, required=True, help='The model to use')
     parser.add_argument('--instance', type=int, required=True, help='The instance to use')
     parser.add_argument('--solver', type=str, required=True, help='The solver to use')
+    parser.add_argument('--timeout', type=int, required=True, help='The timeout expressed in seconds', default=300)
+
 
     args = parser.parse_args()
     model_name = args.model
     instance_num = args.instance
     method = args.method
     solver_id = args.solver
+    timeout_time = args.timeout
 
 
     print_configuration(args.instance, args.model, args.method)
@@ -78,10 +93,10 @@ def main():
     instance["distances"] = distances
 
     #solve the problem
-    result = instance.solve()
+    timeout = timedelta(seconds=timeout_time)
+    #result = instance.solve(timeout=timeout)
+    asyncio.run(print_intermediate_solutions(instance, timeout))
 
-    #print the result
-    print(result)
 
 if __name__ == "__main__":
     main()
