@@ -16,7 +16,12 @@ array [CUSTOMER] of var 0..1: last;
 array [CUSTOMER] of var 0..1: is_pred;
 array [CUSTOMER] of var VEHICLE: vehicle;
 array [CUSTOMER] of var CUSTOMER: num_visit;
+
+array [CUSTOMER] of var int: load;
+
 var VEHICLE: used_couriers;
+
+constraint used_couriers = 6; 
 
 %1. Number of used vehicles should be equal to the number of vehicles returning to the depot
 constraint used_couriers = sum(i in CUSTOMER)(last[i]);
@@ -47,20 +52,30 @@ constraint forall(i in CUSTOMER)(pred[i] != i);
 %    - If the node a is predecessor of the node b then the assigned values in num_visit must satisfy the constrain -> num_visit[a] > num_visit[b] 
 %    - Take an example node c to the path, that is successor of b and predecessor of a (a -> b -> c -> a). There are not gonna be assignable value to  num_visit[c] since: 
 %      - num_visit[c] > num_visit[b], num_visit[a] > num_visit[c] ->  num_visit[a] > num_visit[b] (wrong for definition) 
-constraint forall(i in CUSTOMER)(if pred[i] != num_clients+1 then num_visit[i] > num_visit[pred[i]] endif);
+%constraint forall(i in CUSTOMER)(if pred[i] != num_clients+1 then num_visit[i] > num_visit[pred[i]] endif);
+
+
+
+
+%Paper contraint to avoid subtours
+constraint forall(i in CUSTOMER)(if is_pred[i] == 0 then load[i] = 0 endif);
+constraint forall(i in CUSTOMER)(load[pred[i] - size[i] = load[i]); 
+
+
 
 %8. Capacity constraint, the load od each courrier can't exceed the maximum load size of the vehicle
-constraint forall(j in 1..used_couriers)((sum(i in CUSTOMER where vehicle[i]==j)(size[i])) <= capacity[j]);
+%constraint forall(j in 1..used_couriers)((sum(i in CUSTOMER where vehicle[i]==j)(size[i])) <= capacity[j]);
 
 %Objective Function
 var int: max_dist = max(j in 1..used_couriers)(sum(i in CUSTOMER where vehicle[i]==j)(distances[pred[i],i] + distances[i,num_clients+1]*last[i]));
 
-%9. Lower bound constraint
-%constraint max_dist >= max(j in CUSTOMER)(distances[num_clients,j]+distances[j,num_clients]);
+
+%constraint 
 
 %Solve by minimizing the max distance travelled
 solve minimize max_dist;
- 
+
+
 output [
     "predecessor = \t", show(pred), "\n",
     "num_visit = \t", show(num_visit), "\n",

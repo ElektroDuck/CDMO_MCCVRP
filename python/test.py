@@ -1,6 +1,6 @@
 from minizinc import Instance, Model, Solver
 
-file = "C:\\Users\\lucab\\Desktop\\universitá\\CDMO\\CDMO_MCCVRP\\python\\nqueens.mzn"
+file = ".\\python\\nqueens.mzn"
 
 # Load n-Queens model from file
 nqueens = Model(file)
