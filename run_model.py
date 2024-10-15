@@ -7,7 +7,7 @@ import datetime
 from datetime import timedelta
 from minizinc import Instance, Model, Solver, Status
 
-#python --method CP --model Model_A.mzn --instance 1,3,4 --solver chuffed --timeout 20
+#python run_model.py --method CP --model Model_A.mzn --instance 1,3,4 --solver chuffed --timeout 20
 
 BASE_PATH = os.getcwd()
 
@@ -25,8 +25,8 @@ def print_configuration(instance, model, method):
     print("******Multiple Currier Capacitated Vehicle Routing Problem Solver******")
     print("***********************************************************************")
 
-    print(f"Solving instance: {instance}, model: {model}, method: {method}\n\n")
-
+    print(f"Solving instance: {instance}, model: {model}, method: {method}\n")
+    print("***********************************************************************\n")
 def extract_data_from_dat(instance_path, verbose=True): 
     with open(instance_path, 'r') as file:
         lines = file.readlines()
@@ -155,10 +155,7 @@ async def print_intermediate_solutions(instance, timeout, show_stats=False):
         print("solveTime:  ",  statistics_dict["solveTime"])
         print("Solutions:  ", statistics_dict["solutions"])
         print("End status: ", result.status)
-
         print("\nBest Solution:")
-
-        
 
     print("\n\nInstance Terminated:")
     print(ending_status)
@@ -168,12 +165,13 @@ async def print_intermediate_solutions(instance, timeout, show_stats=False):
 
 def main():
     parser = argparse.ArgumentParser(description="Script that takes method, model, and instance as input.")
-    parser.add_argument('--method',     type=str, required=True,    default="CP",       help='The method to use')
-    parser.add_argument('--model',      type=str, required=True,    default="Model_A",  help='The model to use')
-    parser.add_argument('--instance',   type=str, required=True,    default="1",        help='The instances to solve')
-    parser.add_argument('--solver',     type=str, required=False,   default="gecode",   help='The solver to use')
-    parser.add_argument('--timeout',    type=int, required=False,   default=300,        help='The timeout expressed in seconds')
-    parser.add_argument('--int_res',    type=bool, required=False,  default=False,      help='If true shows intermediate results. Buggy feature.')
+    parser.add_argument('--method',   type=str,  required=True,  default="CP",      help='The method to use')
+    parser.add_argument('--model',    type=str,  required=True,  default="Model_A", help='The model to use')
+    parser.add_argument('--instance', type=str,  required=True,  default="1",       help='The instances to solve')
+    parser.add_argument('--solver',   type=str,  required=False, default="gecode",  help='The solver to use')
+    parser.add_argument('--timeout',  type=int,  required=False, default=300,       help='The timeout expressed in seconds')
+    parser.add_argument('--int_res',  type=bool, required=False, default=False,     help='If true shows intermediate results. Buggy feature.')
+    parser.add_argument('--stat',     type=bool, required=False, default=False,     help='If true shows the statistics.')
 
     args = parser.parse_args()
     model_name = args.model
@@ -182,6 +180,7 @@ def main():
     timeout_time = args.timeout
     instances = define_instances_num(args.instance)
     int_res = args.int_res
+    show_stat = args.stat
     
     print_configuration(instances, args.model, args.method)
 
@@ -211,7 +210,10 @@ def main():
 
         print(f"\nFinished with state: {result.status} after {round(elapsed_time, 4)}s")
         print(f"\nResult:\n {result}")
-        print("*"*50+"\n\n")
+        
+        if show_stat:
+            print(f"\nStatistics:\n {result.statistics}")
+        print("*"*50+"\n")
 
 if __name__ == "__main__":
     main()
