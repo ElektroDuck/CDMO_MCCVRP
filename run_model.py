@@ -21,7 +21,11 @@ def define_instances_num(instances):
     return instances
 
 def print_configuration(instance, model, method): 
-    print(f"solving instance: {instance}, model: {model}, method: {method}")
+    print("\n\n***********************************************************************")
+    print("******Multiple Currier Capacitated Vehicle Routing Problem Solver******")
+    print("***********************************************************************")
+
+    print(f"Solving instance: {instance}, model: {model}, method: {method}\n\n")
 
 def extract_data_from_dat(instance_path, verbose=True): 
     with open(instance_path, 'r') as file:
@@ -189,6 +193,9 @@ def main():
         exit()
 
     for instance_n in instances: 
+
+        print(f"INSTANCE: {instance_n}\n")
+
         instance_file_name = (f"inst{instance_n}" if instance_n >= 10 else f"inst0{instance_n}") + ".dat"
         instance_path = os.path.join(BASE_PATH, "Instances", instance_file_name)
 
