@@ -1,5 +1,6 @@
 import os
 import numpy
+import time
 import asyncio
 import argparse
 import datetime
@@ -47,7 +48,8 @@ def extract_data_from_dat(instance_path, verbose=True):
     return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
 
 
-def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time):
+
+def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time, int_res):
     #instanciate the model
     model = Model(model_path)
     solver = Solver.lookup(solver_id)
@@ -72,8 +74,19 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
 
     #solve the problem
     timeout = timedelta(seconds=timeout_time)
-    result = asyncio.run(print_intermediate_solutions(instance, timeout))
-    return result
+
+    start_time = time.time()
+    if int_res: 
+        asyncio.run(print_intermediate_solutions(instance, timeout))
+    else:
+        result = instance.solve(timeout=timeout)
+    end_time = time.time()
+
+    elapsed_time = end_time - start_time
+
+    return result, elapsed_time
+
+
 
 def get_cp_model_path(model_name):
 
@@ -117,8 +130,7 @@ def timedelta_to_string(td):
     # Join all non-zero components with a space
     return " ".join(parts)
 
-
-async def print_intermediate_solutions(instance, timeout):
+async def print_intermediate_solutions(instance, timeout, show_stats=False):
     last_result = None
     async for result in instance.solutions(intermediate_solutions=True, timeout=timeout):
         if result is not None and result.status is Status.SATISFIED:
@@ -129,21 +141,20 @@ async def print_intermediate_solutions(instance, timeout):
                 time = timedelta_to_string(statistics_dict["time"])
                 print(f"\n Intermediate Solution found at time {time}:")
                 print(result.solution)
-                print("\nStatistics")
-                print(result.statistics)
-                print("\n")
 
+            ending_status = result.status
 
-    statistics_dict = string_to_dict(str(result.statistics))
+    if show_stats: 
+        statistics_dict = string_to_dict(str(result.statistics))
 
-    print("\n\nStatistic on search termination: \n")
-    print("solveTime:  ",  statistics_dict["solveTime"])
-    print("Solutions:  ", statistics_dict["solutions"])
-    print("End status: ", result.status)
+        print("\n\nStatistic on search termination: \n")
+        print("solveTime:  ",  statistics_dict["solveTime"])
+        print("Solutions:  ", statistics_dict["solutions"])
+        print("End status: ", result.status)
 
-    print("\nBest Solution:")
+        print("\nBest Solution:")
 
-    ending_status = result.status
+        
 
     print("\n\nInstance Terminated:")
     print(ending_status)
@@ -153,12 +164,12 @@ async def print_intermediate_solutions(instance, timeout):
 
 def main():
     parser = argparse.ArgumentParser(description="Script that takes method, model, and instance as input.")
-    parser.add_argument('--method',     type=str, required=True, default="CP",      help='The method to use')
-    parser.add_argument('--model',      type=str, required=True, default="Model_A", help='The model to use')
-    parser.add_argument('--instance',   type=str, required=True, default="1",         help='The instances to solve')
-    parser.add_argument('--solver',     type=str, required=True, default="gecode",  help='The solver to use')
-    parser.add_argument('--timeout',    type=int, required=True, default=300,       help='The timeout expressed in seconds')
-
+    parser.add_argument('--method',     type=str, required=True,    default="CP",       help='The method to use')
+    parser.add_argument('--model',      type=str, required=True,    default="Model_A",  help='The model to use')
+    parser.add_argument('--instance',   type=str, required=True,    default="1",        help='The instances to solve')
+    parser.add_argument('--solver',     type=str, required=False,   default="gecode",   help='The solver to use')
+    parser.add_argument('--timeout',    type=int, required=False,   default=300,        help='The timeout expressed in seconds')
+    parser.add_argument('--int_res',    type=bool, required=False,  default=False,      help='If true shows intermediate results. Buggy feature.')
 
     args = parser.parse_args()
     model_name = args.model
@@ -166,6 +177,7 @@ def main():
     solver_id = args.solver
     timeout_time = args.timeout
     instances = define_instances_num(args.instance)
+    int_res = args.int_res
     
     print_configuration(instances, args.model, args.method)
 
@@ -187,14 +199,12 @@ def main():
         #extract the data from the dat file
         num_vehicles, num_clients, vehicles_capacity, packages_size, distances = extract_data_from_dat(instance_path)
 
-        try:
-            result = solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time)
-        except: 
-            pass
 
-        print("FINITO, RISULTATO: ")
-        print(result)
-        print("*"*50)
+        result, elapsed_time = solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time, int_res)
+
+        print(f"\nFinished with state: {result.status} after {round(elapsed_time, 4)}s")
+        print(f"\nResult:\n {result}")
+        print("*"*50+"\n\n")
 
 if __name__ == "__main__":
     main()
