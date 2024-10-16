@@ -1,5 +1,5 @@
 import os
-import numpy
+import numpy as np
 import time
 import asyncio
 import argparse
@@ -27,6 +27,7 @@ def print_configuration(instance, model, method):
 
     print(f"Solving instance: {instance}, model: {model}, method: {method}\n")
     print("***********************************************************************\n")
+
 def extract_data_from_dat(instance_path, verbose=True): 
     with open(instance_path, 'r') as file:
         lines = file.readlines()
@@ -51,6 +52,17 @@ def extract_data_from_dat(instance_path, verbose=True):
 
     return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
 
+#check if the matrix is simmetric 
+def check_simmetry(d):
+    """
+    Check if the matrix is simmetric.
+    This is done comparing the distace matrix with its transpose
+    The comparison returns an Matrix of bool, where c[i,j] = True if d[i,j] == dt[i,j]
+    If the sum of the content of the matrix c = elements contained in d, then it means that the matrix is symmetric
+    """
+    n, m = np.shape(d)
+    dt = np.transpose(d)
+    return np.sum(dt==d) == (n*m)
 
 
 def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time, int_res):
@@ -67,7 +79,7 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     instance["distances"] = distances
 
     #crea una funzione apposita per upper e lowe boud
-    matrix_dist=numpy.array(distances) #transform in numpy matrix
+    matrix_dist=np.array(distances) #transform in numpy matrix
     last_row = matrix_dist[-1, :]  # selects the last row
     last_column = matrix_dist[:, -1]  # selects the last column
     result = last_row + last_column
@@ -75,6 +87,11 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     up_bound = sum(result)
     instance["low_bound"] = low_bound
     instance["up_bound"] = up_bound
+
+    if check_simmetry(matrix_dist):
+        model.add_string("constraint forall(j in vehicles) (successor[j,num_clients+1]<arg_max(successor[j,..]));")
+        print("The matrix is symmetric, a symmetry breaking constrain has been added")
+
 
     #solve the problem
     timeout = timedelta(seconds=timeout_time)
