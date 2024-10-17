@@ -13,12 +13,13 @@ set of int: nodes = 1..num_clients+1; %nodes of the graph
 array[nodes, nodes] of int: distances; %matrix of distances between nodes
 int: low_bound; %lower bound
 int: up_bound; %upper bound
+int: min_dist_bound; %minumum distance every vehicle has to travel
 
 % Modelling of the Decision Variables
 array[vehicles, nodes] of var nodes: successor; % Building a matrix to define the paths
 array[clients] of var 0..num_vehicles: loads;
 %array[vehicles] of var d_low_bound..up_bound: obj_dist;
-array[vehicles] of var int: vehicle_dist;
+array[vehicles] of var min_dist_bound..up_bound: vehicle_dist;
 int : max_load = max(capacity);
 array[vehicles] of var 0..max_load: couriers_loads;
 var low_bound..up_bound: maximum; 

@@ -90,8 +90,10 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     result = last_row + last_column
     low_bound = max(result)
     up_bound = sum(result)
+    min_dist_bound = min(result)
     instance["low_bound"] = low_bound
     instance["up_bound"] = up_bound
+    instance["min_dist_bound"] = min_dist_bound
 
     if check_simmetry(matrix_dist):
         model.add_string("constraint forall(j in vehicles) (successor[j,num_clients+1]<arg_max(successor[j,..]));")
