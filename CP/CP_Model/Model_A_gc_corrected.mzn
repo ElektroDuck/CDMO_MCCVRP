@@ -11,6 +11,9 @@ array[vehicles] of int: capacity; %capacity of every vehicle
 array[clients] of int: size; %size of every item
 set of int: nodes = 1..num_clients+1; %nodes of the graph
 array[nodes, nodes] of int: distances; %matrix of distances between nodes
+int: low_bound; %lower bound
+int: up_bound; %upper bound
+
 % Modelling of the Decision Variables
 array[vehicles, nodes] of var nodes: successor; % Building a matrix to define the paths
 array[clients] of var 0..num_vehicles: loads;
@@ -18,7 +21,7 @@ array[clients] of var 0..num_vehicles: loads;
 array[vehicles] of var int: vehicle_dist;
 int : max_load = max(capacity);
 array[vehicles] of var 0..max_load: couriers_loads;
-var int: maximum; 
+var low_bound..up_bound: maximum; 
 % Constraints
 
 %- 1 Circuit, every path must be closed
@@ -39,7 +42,7 @@ constraint forall(client in clients)(
       count(successor[vehicles, client], client, num_vehicles-1)
 );
 
-%- 4 CHecking the loads
+%- 4 Checking the loads
 
 %- 4.1 Setting the loads to verify the load_size for each courier
 constraint forall(vehicle in vehicles) (
@@ -54,6 +57,12 @@ constraint bin_packing_capa(
                            loads,
                            size);
 
+%SIMMETRY BREAKING
+
+% Symmetry breaking based on loads for couriers with the same capacity
+constraint forall(v in 1..num_vehicles, ov in v..num_vehicles where capacity[v]==capacity[ov])
+    ( couriers_loads[v] >= couriers_loads[ov]);
+    
 %OBJECTIVE FUNCTION                           
 
 % distance computation
@@ -76,7 +85,10 @@ constraint forall(vehicle in vehicles) (
 
 constraint maximum = max(vehicle_dist);
 %var int: max_dist = max(j in vehicles)(sum(i in nodes)(distances[i, successor[j,i]]));
-solve minimize maximum;
+solve 
+:: restart_luby(250)
+:: dom_w_deg
+minimize maximum;
 output [
     "Successor Matrix:\n \t nodes: ", 
     show([i | i in nodes]),
