@@ -28,6 +28,9 @@ var low_bound..up_bound: maximum;
 %- 1 Circuit, every path must be closed
 constraint forall(vehicle in vehicles) (
       subcircuit(successor[vehicle, nodes]));
+      
+constraint forall(vehicle in vehicles) (
+      alldifferent(successor[vehicle,nodes]));
 
 %2. Ensure that each courier starts and ends in origin point
 
@@ -68,14 +71,14 @@ constraint forall(v in 1..num_vehicles, ov in v..num_vehicles where capacity[v]=
 
 % distance computation
 constraint forall(vehicle in vehicles) (
-      vehicle_dist[vehicle] = sum([distances[i, successor[vehicle, i]]| i in nodes where successor[vehicle, i] != i])
+      vehicle_dist[vehicle] = sum([distances[i, successor[vehicle, i]]| i in nodes]) %where successor[vehicle, i] != i])
 );
-% Symmetry breaking constraint (da sistemare)
-%constraint forall(k in vehicles)(
-%    couriers_loads[k] = sum(
-%            [item_size[i] | i in ITEMS where loads[i]=k]
-%    )
-%);
+% Channeling constraint, define the loads of the couriers
+constraint forall(vehicle in vehicles)(
+    couriers_loads[vehicle] = sum(
+            [size[client] | client in clients where loads[client]=vehicle]
+    )
+);
 % sub tour elimination, if the last courier can carry all the packages
 % then all courier must start
 %constraint forall(k in vehicles) (
@@ -87,6 +90,8 @@ constraint forall(vehicle in vehicles) (
 constraint maximum = max(vehicle_dist);
 %var int: max_dist = max(j in vehicles)(sum(i in nodes)(distances[i, successor[j,i]]));
 solve 
+:: seq_search([int_search(successor, first_fail, indomain_min),
+              int_search(loads, first_fail, indomain_min)])
 :: restart_luby(250)
 :: dom_w_deg
 minimize maximum;
