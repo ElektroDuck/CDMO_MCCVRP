@@ -7,6 +7,7 @@ array[1..num_clients+1, 1..num_clients+1] of int: distances;
 array[1..num_vehicles] of var int: theta;  % Ogni veicolo ha un proprio theta
 var int: max_theta;  % Variabile per il massimo percorso
 array[1..num_clients+1, 1..num_clients+1, 1..num_vehicles] of var 0..1: x;
+array[1..num_vehicles, 1..num_clients+1] of var 0..num_clients+1: u;
 
 array [1..num_vehicles, 1..num_clients] of var 0..1: C;
 
@@ -68,12 +69,19 @@ constraint(
   )
 );
 
-% this makes everything work but it is too heavy, needs to be fixed
+% this makes everything work
 constraint (
-  forall(i in 1..num_clients+1, j in 1..num_clients+1, k in 1..num_vehicles where i != j) (
-    x[i,j,k] + x[j,i,k] <= 1
+  forall(k in 1..num_vehicles, j in 1..num_clients+1) (
+    u[k,j] = sum(i in 1 .. num_clients+1) (x[i,j,k] * i)
   )
 );
+
+constraint (
+  forall(k in 1..num_vehicles, j in 1..num_clients+1 where u[k,j] != 0) (
+    u[k,u[k,j]] != j
+  )
+);
+
 
 
 

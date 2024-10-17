@@ -15,9 +15,14 @@ def define_instances_num(instances):
 
     if instances == "all":
         instances =  [i for i in range(1,22)] 
+    elif "-" in instances:
+        limits = instances.split("-")
+        print(limits, int(limits[0]), int(limits[1])+1)
+        instances = [i for i in range(int(limits[0]), int(limits[1])+1)]
     else:
         instances = instances.split(",")
         instances = [int(i) for i in instances]
+    
     return instances
 
 def print_configuration(instance, model, method): 
@@ -107,17 +112,15 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
 
     return result, elapsed_time
 
-
-
 def get_cp_model_path(model_name):
-
     cp_model_path = os.path.join(BASE_PATH, "CP", "CP_Model", model_name)
-    #check if the files exists
-    if not os.path.isfile(cp_model_path):
-        print(f"The model file can't be found. \nGiven model_ path: {cp_model_path}\nCheck that the file exists")
-        exit()
 
     return cp_model_path
+
+def get_mip_model_path(model_name):
+    mip_model_path = os.path.join(BASE_PATH, "ILP", model_name)
+
+    return mip_model_path
 
 def string_to_dict(input_str):
     # Evaluate the string as a Python literal safely
@@ -204,8 +207,14 @@ def main():
         #select the model path depending on the selected method
     if method == "CP":
         model_path = get_cp_model_path(model_name)
+    elif method == "MIP":
+        model_path = get_mip_model_path(model_name)
     else: 
         print("not implemented yet XD")
+        exit()
+
+    if not os.path.isfile(model_path):
+        print(f"The model file can't be found. \nGiven model_ path: {model_path}\nCheck that the file exists")
         exit()
 
     for instance_n in instances: 
