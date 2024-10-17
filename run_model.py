@@ -89,7 +89,7 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     last_column = matrix_dist[:, -1]  # selects the last column
     result = last_row + last_column
     low_bound = max(result)
-    up_bound = sum(result)
+    up_bound = sum([max(distances[i] for i in range(num_vehicles-1, num_clients))])
     min_dist_bound = min(result)
     instance["low_bound"] = low_bound
     instance["up_bound"] = up_bound
