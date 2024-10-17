@@ -7,7 +7,7 @@ import datetime
 from datetime import timedelta
 from minizinc import Instance, Model, Solver, Status
 
-#python run_model.py --method CP --model Model_A.mzn --instance 1,3,4 --solver chuffed --timeout 20
+#python run_model.py --method CP --model Model_A_gc_corrected.mzn --instance 1,3,4 --solver chuffed --timeout 20
 
 BASE_PATH = os.getcwd()
 
@@ -48,12 +48,16 @@ def extract_data_from_dat(instance_path, verbose=True):
     if verbose:
         print(f"num_vehicles: {num_vehicles}")
         print(f"num_clients: {num_clients}")
-        print(f"packages_size:\n {packages_size}")
-        print(f"vehicles_capacity:\n {vehicles_capacity}")
         
-        print(f"distances:")
-        for i in distances: 
-            print(i)
+        if len(distances) <= 20:
+            print(f"packages_size:\n {packages_size}")
+            print(f"vehicles_capacity:\n {vehicles_capacity}")
+            
+            print(f"distances:")
+            for i in distances: 
+                print(i)
+        else: 
+            print(f"\nThe matrix has been omitted, it is too big to be printed")
 
     return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
 
@@ -76,6 +80,9 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     solver = Solver.lookup(solver_id)
     instance = Instance(solver, model)
 
+    #sort the vehicle capacity list in order to implement the symmetry breaking constraints on the vehicle load
+    vehicles_capacity = sorted(vehicles_capacity, reverse=True)
+    
     #assign the input variable to the minizinc variable
     instance["num_vehicles"] = num_vehicles
     instance["num_clients"] = num_clients
