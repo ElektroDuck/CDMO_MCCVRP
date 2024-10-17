@@ -90,10 +90,7 @@ constraint forall(vehicle in vehicles)(
 constraint maximum = max(vehicle_dist);
 %var int: max_dist = max(j in vehicles)(sum(i in nodes)(distances[i, successor[j,i]]));
 solve 
-:: seq_search([int_search(successor, first_fail, indomain_min),
-              int_search(loads, first_fail, indomain_min)])
-:: restart_luby(250)
-:: dom_w_deg
+:: int_search(successor, dom_w_deg, indomain_random) %for chuffed solver comment this line (not implemented by minizinc yet)
 minimize maximum;
 output [
     "Successor Matrix:\n \t nodes: ", 
