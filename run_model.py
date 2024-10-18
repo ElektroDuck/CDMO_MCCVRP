@@ -127,7 +127,7 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     if int_res: 
         asyncio.run(print_intermediate_solutions(instance, timeout))
     else:
-        result = instance.solve(timeout=timeout)
+        result = instance.solve(timeout=timeout, random_seed=42)
     end_time = time.time()
 
     elapsed_time = end_time - start_time
