@@ -41,3 +41,12 @@ if solver.check() == sat:
         print([model[x[i][j]] for j in range(m)])
 else:
     print("Il modello non è soddisfacibile")
+
+
+
+"""
+Quello che manca è:
+    - Vincolo del path coerente
+    - Pacchi consegnati a tutti i clienti
+    - Minimizzare il percorso massimo
+"""
