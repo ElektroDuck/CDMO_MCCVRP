@@ -30,8 +30,8 @@ for j in range(m):
     solver.add(x[n][j] > 0)
 
 # Corriere arriva in un deposito
-for i in range(n):
-    solver.add(Sum([If(x[i][j] == n+1, 1, 0) for j in range(m)]) == 1)
+for j in range(m):
+    solver.add(Sum([If(x[i][j] == n+1, 1, 0) for i in range(n)]) == 1)
 
 
 # Verifica se il modello è soddisfacibile
