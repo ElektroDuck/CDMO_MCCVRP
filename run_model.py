@@ -96,6 +96,12 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     solver = Solver.lookup(solver_id)
     instance = Instance(solver, model)
 
+    #transform in numpy matrix
+    matrix_dist=np.array(distances) 
+
+    #compute upper and lower bound
+    low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
+
     #sort the vehicle capacity list in order to implement the symmetry breaking constraints on the vehicle load
     vehicles_capacity = sorted(vehicles_capacity, reverse=True)
     
@@ -105,20 +111,14 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     instance["size"] = packages_size
     instance["capacity"] = vehicles_capacity
     instance["distances"] = distances
-
-    #crea una funzione apposita per upper e lowe boud
-    matrix_dist=np.array(distances) #transform in numpy matrix
-    
-    low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
-
     instance["low_bound"] = low_bound
     instance["up_bound"] = up_bound
     instance["min_dist_bound"] = min_dist_bound
 
+    #if there is a symmetry in the matrix, add a symmetry breaking constraint
     if check_simmetry(matrix_dist):
         model.add_string("constraint forall(j in vehicles) (successor[j,num_clients+1]<arg_max(successor[j,..]));")
         print("\nThe matrix is symmetric, a symmetry breaking constrain has been added\n")
-
 
     #solve the problem
     timeout = timedelta(seconds=timeout_time)
@@ -134,14 +134,13 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
 
     return result, elapsed_time
 
+
 def get_cp_model_path(model_name):
     cp_model_path = os.path.join(BASE_PATH, "CP", "CP_Model", model_name)
-
     return cp_model_path
 
 def get_mip_model_path(model_name):
     mip_model_path = os.path.join(BASE_PATH, "ILP", model_name)
-
     return mip_model_path
 
 def string_to_dict(input_str):
@@ -204,6 +203,61 @@ async def print_intermediate_solutions(instance, timeout, show_stats=False):
 
     return last_result
 
+#recursevely extract the route from the succ_matrix
+def extract_route(row_arr, num_clients, prev=[]):
+    if prev == []:
+        prev = [num_clients,]
+    elif row_arr[prev[-1]] == num_clients:
+        prev.append(num_clients)
+        return prev
+    else:  
+        prev.append(row_arr[prev[-1]])
+    
+    return extract_route(row_arr, num_clients, prev)
+
+def reconstruct_solution(succ_matrix, num_vehicles, num_clients, distance_matrix):
+
+    #take the string succ_matrix, transform it as an array, then reshape it as a matrix
+    succ_matrix = succ_matrix.replace("[", "").replace("]", "")
+    succ_matrix = np.array(succ_matrix.split(",")).reshape(num_vehicles, num_clients+1)
+
+    #convert the content of the matrix to the int type
+    succ_matrix = succ_matrix.astype(int)
+
+    #succ_matrix is composed by number that span from 1 to n_vehicles+1
+    #to have the correct index, we subtract 1 to each element
+    succ_matrix =  succ_matrix - 1
+    
+    solution = {}
+
+    #for each row, take the index of the elemnent that dosn't correspond with the index of the column
+    for i in range(0, num_vehicles):
+        #extract the route from the succ_matrix and store it in the solution dictionary
+        solution[i] = extract_route(succ_matrix[i], num_clients)
+
+
+    #using the distance matrix and the solution, compute the total distance for each vehicle
+    distance =[]
+    for i in range(0, num_vehicles):
+        total_distance = 0
+        for j in range(0, len(solution[i])-1):
+            total_distance += distance_matrix[solution[i][j]][solution[i][j+1]]
+        distance.append(total_distance)
+
+    return solution, distance
+
+
+def solution_to_string(solution_dict, distances):
+    string = ""
+    for key, value in solution_dict.items():
+        string += f"Vehicle {key+1} tour: (distance {distances[key]}) \n "
+        string += f"{value[0]}"
+        for i in value[1:]:
+            string += f" -> {i}"
+        string += "\n"
+    return string
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Script that takes method, model, and instance as input.")
@@ -257,11 +311,26 @@ def main():
         result, elapsed_time = solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time, int_res)
 
         print(f"\nFinished with state: {result.status} after {round(elapsed_time, 4)}s")
-        print(f"\nResult:\n {result}")
+
+        print("\nRESULTS:")
+
+        res_arr = str(result.solution).split("|")
         
+        succ_matrix = res_arr[0]
+        max_load_compute = res_arr[1]
+
+        solution, distances = reconstruct_solution(succ_matrix, num_vehicles, num_clients, distances)
+
+
+        print(solution_to_string(solution, distances))
+
+        print(f"Max Load Compute: {max_load_compute}")
+        print(f"Max Load reconstructed from sol: {max(distances)}")
+
         if show_stat:
             print(f"\nStatistics:\n {result.statistics}")
-        print("*"*50+"\n")
+        
+        print("\n"+"*"*50+"\n")
 
 if __name__ == "__main__":
     main()
