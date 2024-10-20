@@ -1,4 +1,9 @@
 from z3 import *
+"""
+LEGGI IL PDF PER CAPIRE COME è MODELLATO IL PROBLEMA, APPROCCIO 2DIMENSIONALE
+
+"""
+
 
 # Definisco i parametri
 n = 6  # numero di righe
