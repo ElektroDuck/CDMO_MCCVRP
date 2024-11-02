@@ -61,6 +61,22 @@ def extract_data_from_dat(instance_path, verbose=True):
 
     return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
 
+
+def compute_bounds(distances, num_vehicles, num_clients):
+    matrix_dist = np.array(distances) #transform in numpy matrix
+    last_row = matrix_dist[-1, :]  # selects the last row
+    last_column = matrix_dist[:, -1]  # selects the last column
+    result = last_row + last_column
+    low_bound = max(result)
+    #up_bound = sum([max(matrix_dist[i] for i in range(num_vehicles-1, num_clients))])
+    min_dist_bound = min(result)
+
+    dist_sorted = matrix_dist[np.max(matrix_dist, axis=0).argsort()]
+    up_bound = sum([max(dist_sorted[i]) for i in range(num_vehicles-1, num_clients+1)])
+
+    return low_bound, min_dist_bound, up_bound
+
+
 #check if the matrix is simmetric 
 def check_simmetry(d):
     """
@@ -92,15 +108,8 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
 
     #crea una funzione apposita per upper e lowe boud
     matrix_dist=np.array(distances) #transform in numpy matrix
-    last_row = matrix_dist[-1, :]  # selects the last row
-    last_column = matrix_dist[:, -1]  # selects the last column
-    result = last_row + last_column
-    low_bound = max(result)
-    #up_bound = sum([max(matrix_dist[i] for i in range(num_vehicles-1, num_clients))])
-    min_dist_bound = min(result)
-
-    dist_sorted = matrix_dist[np.max(matrix_dist, axis=0).argsort()]
-    up_bound = sum([max(dist_sorted[i]) for i in range(num_vehicles-1, num_clients+1)])
+    
+    low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
 
     instance["low_bound"] = low_bound
     instance["up_bound"] = up_bound
@@ -119,7 +128,7 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     if int_res: 
         asyncio.run(print_intermediate_solutions(instance, timeout))
     else:
-        result = instance.solve(timeout=timeout)
+        result = instance.solve(timeout=timeout, random_seed=42)
     end_time = time.time()
 
     elapsed_time = end_time - start_time
