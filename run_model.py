@@ -106,6 +106,7 @@ def solve_instance(model_path, solver_id, num_vehicles, num_clients, vehicles_ca
     instance["up_bound"] = up_bound
     instance["min_dist_bound"] = min_dist_bound
 
+
     if check_simmetry(matrix_dist):
         model.add_string("constraint forall(j in vehicles) (successor[j,num_clients+1]<arg_max(successor[j,..]));")
         print("\nThe matrix is symmetric, a symmetry breaking constrain has been added\n")
