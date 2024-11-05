@@ -1,9 +1,6 @@
 from z3 import *
 import os
 import time
-"""
-LEGGI IL PDF PER CAPIRE COME è MODELLATO IL PROBLEMA, APPROCCIO 2DIMENSIONALE
-"""
 
 
 def solve(instance):
@@ -27,95 +24,74 @@ def solve(instance):
     n = num_vehicles  # numero di righe
     m = num_clients  # numero di colonne
 
-    # Creo la matrice x di variabili intere
-    x = [[Int(f'x_{i}_{j}') for j in range(m+1)] for i in range(n)]
-    total_distances = [Int(f"total_distance_{i}") for i in range(n)]
-    max_distance = Int("max_distance")
-    #u = [[Int(f'u_{i}_{j}') for j in range(m+1)] for i in range(n)]
+
+    # Define decision variables
+    paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(m+1)] for j in range(m+1)] for i in range(n)]
+    num_visit = [Int(f"num_visit{i}") for i in range(m)]
 
 
     # Creo un solver Z3
     solver = Optimize()
 
     # Aggiungo i vincoli:
-    # - Ogni x[i,j] è maggiore o uguale a 0 e minore o uguale a n+1
+    
+    # Constraints on decision variables domains
+    for i in range(m):
+        solver.add(And(num_visit[i] >= 0, num_visit[i] <= m-1))
+
+    
+    # Each customer should be visited only once
     for i in range(n):
-        for j in range(m+1):
-            solver.add(x[i][j] >= 0, x[i][j] <= m + 1)
+        for k in range(m):
+            solver.add(Implies(Sum([paths[i][j][k] for j in range(m+1)]) == 1, Sum([paths[i][k][j] for j in range(m+1)]) == 1))
+            solver.add(And(Sum([paths[i][j][k] for i in range(n) for j in range(m + 1)]) == 1,
+                           Sum([paths[i][k][j] for j in range(m + 1) for i in range(n)]) == 1))
 
-    # Vincolo: esattamente un elemento diverso da zero per ogni colonna (cliente visitato da un solo corriere) tranne l'ultima
-    for j in range(m):
-        solver.add(Sum([If(x[i][j] != 0, 1, 0) for i in range(n)]) == 1)
 
-    # Vincolo: diagonale = 0
+    # Subtour constraint
     for i in range(n):
-        for j in range(m+1):
-            solver.add(x[i][j] != j+1)
+        for j in range(m):
+            for k in range(m):
+                solver.add(Implies(paths[i][j][k], num_visit[j] < num_visit[k]))
 
-    # Corriere parte da un deposito
+    # Capacity constraint
     for i in range(n):
-        solver.add(Sum([If(x[i][j] == m+1, 1, 0) for j in range(m+1)]) == 1)
+        solver.add(Sum([paths[i][j][k]*packages_size[k] for k in range(m) for j in range(m+1)]) <= vehicles_capacity[i])
 
-    # Corriere arriva in un deposito
+    
+    # paths[i][j][j] should be False for any i and any j Diagonal != 1
+    solver.add(Sum([paths[i][j][j] for j in range(m+1) for i in range(n)]) == 0)
+    
+    # Each path should begin and end at the depot
     for i in range(n):
-        solver.add(x[i][m] > 0)
-
-
-    # I due constraint qui sotto sono strani ma dovrebbero funzionare
-    # Colonne diverse tra di loro (ad eccezione dello zero)
-    for j in range(m+1):
-        for i in range(n):
-            for w in range(i+1, n):
-                solver.add(Or(x[i][j] == 0, x[w][j] == 0, x[i][j] != x[w][j]))
-
-    # righe con elementi diversi (ammessi più zeri)
+        solver.add(And(Sum([paths[i][m][k] for k in range(m)]) == 1, Sum([paths[i][j][m] for j in range(m)]) == 1))
+    
+    # Define the objective function
+    max_dist = Int("max_dist")
     for i in range(n):
-        for w in range(m+1):
-            for j in range(w+1, m+1):
-                solver.add(Or(x[i][w] == 0, x[i][j] == 0, x[i][w] != x[i][j]))
-
-
-    # Constraint della capacità
-    for i in range(n):
-        #vehicles_capacity
-            solver.add(Sum([If(x[i][j] != 0, packages_size[j], 0) for j in range(m)]) <= vehicles_capacity[i])
+        solver.add(Sum([paths[i][j][k]*distances[j][k] for j in range(m+1) for k in range(m+1)]) <= max_dist)
     
 
-
-    # Funzione obiettivo
-    for i in range(n):
-        solver.add(total_distances[i] == Sum([
-            Sum([
-                If(x[i][j] == k + 1, distances[k][j], 0)  # Se x[i][j] è la destinazione k+1, usa distances[j][k]
-                for k in range(m+1)
-            ])
-            for j in range(m+1)
-        ]))
-
-    for i in range(n):
-        solver.add(max_distance >= total_distances[i])
-
-    # Verifica se il modello è soddisfacibile
-    # if solver.check() == sat:
-    #     model = solver.model()
-    #     for i in range(n):    
-    #         print([model[x[i][j]] for j in range(m+1)])
-    # else:
-    #     print("Il modello non è soddisfacibile")
-
-    solver.minimize(max_distance)
+    for i1 in range(n):
+        for i2 in range(n):
+            if i1 < i2 and vehicles_capacity[i1] == vehicles_capacity[i2]:
+                for j in range(m):
+                    for k in range(m):
+                        solver.add(Implies(And(paths[i1][m][j], paths[i2][m][k]), j < k))
+    
+    solver.minimize(max_dist)
+    
     if solver.check() == sat:
-        
         model = solver.model()
         #print("Distanza massima minimizzata:", model[max_distance])
-        return True, model[max_distance]
-        for i in range(n):
-            print(f"Distanza totale per corriere {i}: ", model[total_distances[i]])
-            print(f"Percorso del corriere {i}: ", [model[x[i][j]] for j in range(m+1)])
-            print("\n")
+        #print(f"Distanza ottimizzata : ", model[max_dist])
+        #print("\n")
+        return True, model[max_dist]
     else:
-        return False, None
         print("Nessuna soluzione trovata.")
+        return False, None
+
+
 
 
 for i in range(1,22):
@@ -127,12 +103,3 @@ for i in range(1,22):
         print(f"Instance {i} solved in {round(end-start, 2)}s with a max_dist of {max_dist}")
     else:
         print(f"instance {i} not solved (took {round(end-start, 2)}s)")
-
-
-
-
-"""
-Quello che manca è:
-    - Vincolo del path coerente
-    - Pacco consegnato da un solo corriere (in teoria minimizzando poi il percorso massimo questa roba dovrebbe essere implicita)
-"""
