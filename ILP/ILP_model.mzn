@@ -4,119 +4,112 @@ int: num_clients;
 array[1..num_vehicles] of int: capacity;
 array[1..num_clients] of int: size;
 array[1..num_clients+1, 1..num_clients+1] of int: distances;                         
-array[1..num_vehicles] of var int: theta;  % Ogni veicolo ha un proprio theta
-var int: max_theta;  % Variabile per il massimo percorso
+
 array[1..num_clients+1, 1..num_clients+1, 1..num_vehicles] of var 0..1: x;
-array[1..num_vehicles, 1..num_clients+1] of var 0..num_clients+1: u;
-
-array [1..num_vehicles, 1..num_clients] of var 0..1: C;
-
+array[1..num_clients+1, 1..num_vehicles] of var 0..1: y;
+array[1..num_clients, 1..num_vehicles] of var 1..num_clients: u;
 
 
-% Constraint I: somma colonne = 1
+var int: max_distance;
 
+
+
+% Each item solo ad un corriere
 constraint (
-  forall(j in 1..num_clients)(
-    sum(i in 1..num_vehicles)(C[i,j]) = 1
+  forall (i in 1..num_clients) (
+    sum(k in 1..num_vehicles)(y[i,k]) == 1
   )
 );
 
 
-% Constraint II: almeno un pacco per corriere
+% Ogni corriere è attivo (parte da un deposito) (non l'ho capito)
 
 constraint (
-  forall (i in 1..num_vehicles) (
-    sum(j in 1..num_clients)(C[i,j]) > 0
+  sum(k in 1..num_vehicles)(y[num_clients+1, k]) = num_vehicles
+);
+
+% Ogni corriere rispetta capacità massima
+
+constraint (
+  forall(k in 1..num_vehicles) (
+    sum(i in 1..num_clients) (y[i,k] * size[i]) <= capacity[k]
   )
 );
 
-% Constraint di prova: dividere in maniera circa equa i pacchi
-
+% unicità dei travel dei corrieri
 constraint (
-  forall(i in 1..num_vehicles) (
-    sum(j in 1..num_clients) (C[i,j]) <= num_clients / num_vehicles + 2
-  )
-);
-
-
-% Constraint III: constraint di peso
-
-constraint (
-  forall (i in 1..num_vehicles) (
-    sum(j in 1..num_clients)(C[i,j] * size[j]) <= capacity[i]
-  )
-);
-
-% Constraint IV:  channelling constraint
-
-constraint (
-  forall(j in 1..num_clients, k in 1..num_vehicles)(
-    sum(i in 1..num_clients+1) (x[i,j,k]) == C[k,j]
-  )
-);
-
-% diagonale != 0
-constraint (
-  forall(k in 1..num_vehicles)(
-    sum(i in 1..num_clients+1) (x[i,i,k]) == 0
-  )
-);
-
-% Constraint VII: destinazione raggiunta da una partenza in cui ero
-constraint(
-  forall(i in 1..num_clients+1, k in 1..num_vehicles)(
+  forall (i in 1..num_clients, k in 1..num_vehicles) (
     sum(j in 1..num_clients+1)(x[i,j,k]) == sum(j in 1..num_clients+1)(x[j,i,k])
   )
 );
 
-% this makes everything work
+% Channelling tra x ed y
 constraint (
-  forall(k in 1..num_vehicles, j in 1..num_clients+1) (
-    u[k,j] = sum(i in 1 .. num_clients+1) (x[i,j,k] * i)
+  forall (i in 1..num_clients, k in 1..num_vehicles) (
+    sum(j in 1..num_clients+1)(x[j,i,k]) == y[i,k]
   )
-);
-
-constraint (
-  forall(k in 1..num_vehicles, j in 1..num_clients+1 where u[k,j] != 0) (
-    u[k,u[k,j]] != j
-  )
-);
+ );
 
 
-
-
-% % Constraint V: constraint dei depositi (partenze)
-
-% constraint (
-%   forall(k in 1..num_vehicles)(
-%     sum(j in 1..num_clients+1)(x[num_clients+1, j, k]) == 1
-%   )
-% );
-
-% Constraint VI: constraint dei depositi (arrivi)
-
-constraint (
-  forall(k in 1..num_vehicles)(
-    sum(i in 1..num_clients+1)(x[i, num_clients+1, k]) == 1
-  )
-);
-
-
-
-% Objective function
-% Calcola il percorso totale per ogni veicolo e assegna il risultato a theta[k]
+% Diagonal = 0
 constraint (
   forall (k in 1..num_vehicles) (
-    theta[k] = sum(i in 1..num_clients+1, j in 1..num_clients+1)(distances[i,j] * x[i,j,k])
+    sum(j in 1..num_clients+1) (x[j,j,k]) == 0
   )
 );
 
-% Vincola max_theta ad essere il massimo tra i valori di theta
+% Partendo da un nodo, ogni altro corriere deve andare in un altro (???)
+constraint (
+  forall (j in 1..num_clients) (
+    sum(i in 1..num_clients+1, k in 1..num_vehicles) (x[i,j,k]) == 1
+  )
+);
+
+% Ogni corriere torna al depot
 constraint (
   forall (k in 1..num_vehicles) (
-    max_theta >= theta[k]
+    sum(i in 1..num_clients+1) (x[i,num_clients+1,k]) == 1
+  )
+);
+
+% Per ogni cliente j, ci deve essere solo un veicolo k che va da j ad i
+constraint (
+  forall (j in 1..num_clients) (
+    sum (i in 1..num_clients+1, k in 1..num_vehicles) (x[i,j,k]) == 1
+  )
+);
+
+% Per ogni cliente j, ci deve essere slo un veicolo k che da i va a j
+
+constraint (
+  forall (i in 1..num_clients) (
+    sum (j in 1..num_clients+1, k in 1..num_vehicles) (x[i,j,k]) == 1
+  )
+);
+
+% Se un veicolo k visita j, lo stesso veicolo dovrebbe andare da j in un'altra location.
+% Il numero di corrieri che entra in un nodo deve essere uguale al numero che esce
+
+constraint (
+  forall (k in 1..num_vehicles, j in 1..num_clients+1)(
+    sum(i in 1..num_clients+1) (x[i,j,k]) == sum(i in 1..num_clients+1) (x[j,i,k])
+  )
+);
+
+%MTZ formulation
+constraint (
+  forall (i in 1..num_clients, j in 1..num_clients, k in 1..num_vehicles where i != j) (
+    u[i,k] - u[j,k] + num_clients * x[i,j,k] <= num_clients - 1
+  )
+);
+
+% Vincolo per calcolare la distanza totale per ogni veicolo e legarla a max_distance
+constraint (
+  forall (k in 1..num_vehicles) (
+    sum(i in 1..num_clients+1, j in 1..num_clients+1) (x[i, j, k] * distances[i, j]) <= max_distance
   )
 );
 
 
-solve minimize max_theta;
+
+solve minimize max_distance;
