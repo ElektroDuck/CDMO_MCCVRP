@@ -40,10 +40,14 @@ con me ha funzionato con ```setx PATH "%PATH%;C:\Program Files\MiniZinc```
 
 # Docker
 
-build the cotnainer
+build the container
 ```docker build -t cdmo_project .```
 
 work on the terminal of the container
-```docker run -it cdmo_project /bin/bash```
+```docker run -it cdmo_project```
 
+from now on the terminal opens and we can execute commands inside the virtual machine
+
+Example: 
+```python run_model.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1,3,4 --solver gecode --timeout 20```
 
