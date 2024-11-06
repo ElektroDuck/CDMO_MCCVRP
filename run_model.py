@@ -7,7 +7,7 @@ import datetime
 from datetime import timedelta
 from minizinc import Instance, Model, Solver, Status
 
-#python run_model.py --method CP --model Model_A_gc_corrected.mzn --instance 1,3,4 --solver chuffed --timeout 20
+#python run_model.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1,3,4 --solver gecode --timeout 20
 
 BASE_PATH = os.getcwd()
 
