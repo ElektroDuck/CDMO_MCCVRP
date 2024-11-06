@@ -38,4 +38,12 @@ dove la guida dice che YOUR_INSTALLATION_FOLDER dovrebbe essere tipo ```C:\Progr
 con me ha funzionato con ```setx PATH "%PATH%;C:\Program Files\MiniZinc```
 
 
+# Docker
+
+build the cotnainer
+```docker build -t cdmo_project .```
+
+work on the terminal of the container
+```docker run -it cdmo_project /bin/bash```
+
 
