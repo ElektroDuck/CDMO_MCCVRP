@@ -64,8 +64,8 @@ constraint bin_packing_capa(
 %SIMMETRY BREAKING
 
 % Symmetry breaking based on loads for couriers with the same capacity
-constraint forall(v in 1..num_vehicles, ov in v..num_vehicles where capacity[v]==capacity[ov])
-    ( couriers_loads[v] >= couriers_loads[ov]);
+constraint forall(v in 1..num_vehicles, ov in v+1..num_vehicles where capacity[v]==capacity[ov])
+    ( lex_less(successor[v, nodes],successor[ov,nodes]));
     
 %OBJECTIVE FUNCTION                           
 
