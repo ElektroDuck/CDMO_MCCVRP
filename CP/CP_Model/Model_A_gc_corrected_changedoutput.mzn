@@ -92,13 +92,17 @@ constraint maximum = max(vehicle_dist);
 solve 
 :: int_search(successor, dom_w_deg, indomain_random) %for chuffed solver comment this line (not implemented by minizinc yet)
 minimize maximum;
-output [
-    "Successor Matrix:\n \t nodes: ", 
-    show([i | i in nodes]),
-    "\n \t\t",
-    concat([show([successor[k, j] | j in nodes]) ++ "\n\t\t" | k in vehicles]),
-    
-    "\n loads = \t", show(loads), "\n",
-    
-    "Maximum Distance = ", show(maximum), "\n"
-];
+
+
+%output [
+%    "Successor Matrix:\n \t nodes: ", 
+%    show([i | i in nodes]),
+%    "\n \t\t",
+%    concat([show([successor[k, j] | j in nodes]) ++ "\n\t\t" | k in vehicles]),
+%    
+%    "\n loads = \t", show(loads), "\n",
+%    
+%    "Maximum Distance = ", show(maximum), "\n"
+%];
+
+output [show(successor), "|", show(maximum)]; 
