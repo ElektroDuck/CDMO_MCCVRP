@@ -72,6 +72,7 @@ def solve(instance):
         solver.add(Sum([paths[i][j][k]*distances[j][k] for j in range(m+1) for k in range(m+1)]) <= max_dist)
     
 
+    # Symmetry breaking (non so come funzioni)
     for i1 in range(n):
         for i2 in range(n):
             if i1 < i2 and vehicles_capacity[i1] == vehicles_capacity[i2]:
