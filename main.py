@@ -63,16 +63,41 @@ def extract_data_from_dat(instance_path, verbose=True):
 
     return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
 
+def check_model_folder_exists(method): 
+    #check if the folder with name equal to the model exists in the folder res
+    path = os.path.join(BASE_PATH, "res", method)
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+def check_instance_file_exists(instance_n, method):
+    #check if the instance file exists in the folder res
+    path = os.path.join(BASE_PATH, "res", method, f"{instance_n}.json")
+    if not os.path.isfile(path):
+        with open(path , 'w') as file:
+            file.write("{}")
+
+## TO DO continue from here
+def update_json_file(instance_n, method, result):
+    path = os.path.join(BASE_PATH, "res", method, f"{instance_n}.json")
+    #open the json and update it with the new result
+    with open(path, 'r') as file:
+        data = file.read()
+        if data == "":
+            data = "{}"
+        data
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script that takes method, model, and instance as input.")
-    parser.add_argument('--method',   type=str,  required=True,  default="CP",      help='The method to use')
-    parser.add_argument('--model',    type=str,  required=True,  default="Model_A", help='The model to use')
-    parser.add_argument('--instance', type=str,  required=True,  default="1",       help='The instances to solve')
-    parser.add_argument('--solver',   type=str,  required=False, default="gecode",  help='The solver to use')
-    parser.add_argument('--timeout',  type=int,  required=False, default=300,       help='The timeout expressed in seconds')
-    parser.add_argument('--int_res',  type=bool, required=False, default=False,     help='If true shows intermediate results. Buggy feature.')
-    parser.add_argument('--stat',     type=bool, required=False, default=False,     help='If true shows the statistics.')
+    parser.add_argument('--method',     type=str,  required=True,  default="CP",      help='The method to use')
+    parser.add_argument('--model',      type=str,  required=True,  default="Model_A", help='The model to use')
+    parser.add_argument('--instance',   type=str,  required=True,  default="1",       help='The instances to solve')
+    parser.add_argument('--solver',     type=str,  required=False, default="gecode",  help='The solver to use')
+    parser.add_argument('--timeout',    type=int,  required=False, default=300,       help='The timeout expressed in seconds')
+    parser.add_argument('--int_res',    type=bool, required=False, default=False,     help='If true shows intermediate results. Buggy feature.')
+    parser.add_argument('--stat',       type=bool, required=False, default=False,     help='If true shows the statistics.')
+    parser.add_argument('--update_json',type=bool, required=False, default=False,     help='If true shows the statistics.')
 
     args = parser.parse_args()
     model_name = args.model
@@ -82,6 +107,7 @@ if __name__ == "__main__":
     instances = define_instances_num(args.instance)
     int_res = args.int_res
     show_stat = args.stat
+    update_json = args.update_json
     
     print_configuration(instances, args.model, args.method)
 
@@ -115,3 +141,10 @@ if __name__ == "__main__":
             result = solvers.solve_mip(instance, timeout_time)
         elif method == "SMT":
             result = solvers.solve_smt(instance, timeout_time)
+
+        #result: "time": 300, "optimal": false, "obj": 12, "sol" : [[3, 6, 5], [4, 2], [7, 1]]
+
+        if update_json:
+            check_model_folder_exists(method)
+            check_instance_file_exists(instance_n, method)
+            update_json_file(instance_n, method, result)
