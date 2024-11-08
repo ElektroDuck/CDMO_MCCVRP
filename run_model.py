@@ -11,19 +11,7 @@ from minizinc import Instance, Model, Solver, Status
 
 BASE_PATH = os.getcwd()
 
-def define_instances_num(instances): 
 
-    if instances == "all":
-        instances =  [i for i in range(1,22)] 
-    elif "-" in instances:
-        limits = instances.split("-")
-        print(limits, int(limits[0]), int(limits[1])+1)
-        instances = [i for i in range(int(limits[0]), int(limits[1])+1)]
-    else:
-        instances = instances.split(",")
-        instances = [int(i) for i in instances]
-    
-    return instances
 
 def print_configuration(instance, model, method): 
     print("\n\n***********************************************************************")

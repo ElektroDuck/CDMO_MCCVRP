@@ -4,7 +4,6 @@ import time
 import numpy as np
 from upper_bound import compute_upper_bound
 
-
 def compute_bounds(distances, num_vehicles, num_clients):
     matrix_dist = np.array(distances) #transform in numpy matrix
     last_row = matrix_dist[-1, :]  # selects the last row
