@@ -3,7 +3,15 @@ import os
 import time
 import numpy as np
 from upper_bound import compute_upper_bound
+import sys
 
+
+def callback(tmp_model):
+    try:
+        #print(f"\tIntermediate objective function value: {tmp_model.eval(max_dist)}")
+        pass
+    except:
+        pass
 
 def compute_bounds(distances, num_vehicles, num_clients):
     matrix_dist = np.array(distances) #transform in numpy matrix
@@ -32,25 +40,29 @@ def solve(instance):
 
         distances = [list(map(int, line.strip().split())) for line in lines[4:]]
 
-    ub,_ = compute_upper_bound(distances)
-    lb,_,_ = compute_bounds(distances, num_vehicles, num_clients)
-
-
-
     # Definisco i parametri
     n = num_vehicles  # numero di righe
     m = num_clients  # numero di colonne
-
+    ub,_ = compute_upper_bound(distances)
+    lb,_,_ = compute_bounds(distances, num_vehicles, num_clients)
 
     # Define decision variables
     paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(m+1)] for j in range(m+1)] for i in range(n)]
     num_visit = [Int(f"num_visit{i}") for i in range(m)]
-
+    
 
     # Creo un solver Z3
     solver = Optimize()
+    solver.set_on_model(callback)
+    solver.set("timeout", 1)
+
+
 
     # Aggiungo i vincoli:
+
+    max_dist = Int("max_dist")
+    solver.add(max_dist <= ub)
+    solver.add(max_dist >= lb)
     
     # Constraints on decision variables domains
     for i in range(m):
@@ -83,14 +95,6 @@ def solve(instance):
     for i in range(n):
         solver.add(And(Sum([paths[i][m][k] for k in range(m)]) == 1, Sum([paths[i][j][m] for j in range(m)]) == 1))
     
-    # Define the objective function
-    max_dist = Int("max_dist")
-    solver.add(max_dist <= ub)
-    solver.add(max_dist >= lb)
-    for i in range(n):
-        solver.add(Sum([paths[i][j][k]*distances[j][k] for j in range(m+1) for k in range(m+1)]) <= max_dist)
-    
-
     # Symmetry breaking (non so come funzioni)
     for i1 in range(n):
         for i2 in range(n):
@@ -99,28 +103,41 @@ def solve(instance):
                     for k in range(m):
                         solver.add(Implies(And(paths[i1][m][j], paths[i2][m][k]), j < k))
 
+                        
+    # Define the objective function
+    for i in range(n):
+        solver.add(Sum([paths[i][j][k]*distances[j][k] for j in range(m+1) for k in range(m+1)]) <= max_dist)
     
+
+
+    # Ottimizzo
     solver.minimize(max_dist)
-    
-    if solver.check() == sat:
-        model = solver.model()
-        #print("Distanza massima minimizzata:", model[max_distance])
-        #print(f"Distanza ottimizzata : ", model[max_dist])
-        #print("\n")
-        return True, model[max_dist]
-    else:
-        print("Nessuna soluzione trovata.")
+
+    try:
+        res = solver.check()
+        if res == sat:
+            model = solver.model()
+            #print("Distanza massima minimizzata:", model[max_distance])
+            #print(f"Distanza ottimizzata : ", model[max_dist])
+            #print("\n")
+            return True, model[max_dist]
+        else:
+            print("Nessuna soluzione trovata.")
+            return False, None
+    except Z3Exception as e:
+        print("Timeout!")
         return False, None
 
 
 
-
 for i in range(1,22):
+    print("")
     instance = f"inst0{i}.dat" if i < 10 else f"inst{i}.dat"
+    print("Solving instance ", instance)
     start = time.time()
     result, max_dist = solve(instance)
     end = time.time()
     if result:
-        print(f"Instance {i} solved in {round(end-start, 2)}s with a max_dist of {max_dist}")
+        print(f"\tInstance {i} solved in {round(end-start, 2)}s with a max_dist of {max_dist}")
     else:
-        print(f"instance {i} not solved (took {round(end-start, 2)}s)")
+        print(f"\tinstance {i} not solved (took {round(end-start, 2)}s)")
