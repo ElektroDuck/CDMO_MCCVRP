@@ -1,7 +1,23 @@
 from z3 import *
 import os
 import time
+import numpy as np
+from upper_bound import compute_upper_bound
 
+
+def compute_bounds(distances, num_vehicles, num_clients):
+    matrix_dist = np.array(distances) #transform in numpy matrix
+    last_row = matrix_dist[-1, :]  # selects the last row
+    last_column = matrix_dist[:, -1]  # selects the last column
+    result = last_row + last_column
+    low_bound = max(result)
+    #up_bound = sum([max(matrix_dist[i] for i in range(num_vehicles-1, num_clients))])
+    min_dist_bound = min(result)
+
+    dist_sorted = matrix_dist[np.max(matrix_dist, axis=0).argsort()]
+    up_bound = sum([max(dist_sorted[i]) for i in range(num_vehicles-1, num_clients+1)])
+
+    return low_bound, min_dist_bound, up_bound
 
 def solve(instance):
     if os.path.exists("../Instances"):
@@ -16,7 +32,8 @@ def solve(instance):
 
         distances = [list(map(int, line.strip().split())) for line in lines[4:]]
 
-
+    ub,_ = compute_upper_bound(distances)
+    lb,_,_ = compute_bounds(distances, num_vehicles, num_clients)
 
 
 
@@ -68,6 +85,8 @@ def solve(instance):
     
     # Define the objective function
     max_dist = Int("max_dist")
+    solver.add(max_dist <= ub)
+    solver.add(max_dist >= lb)
     for i in range(n):
         solver.add(Sum([paths[i][j][k]*distances[j][k] for j in range(m+1) for k in range(m+1)]) <= max_dist)
     
@@ -79,6 +98,7 @@ def solve(instance):
                 for j in range(m):
                     for k in range(m):
                         solver.add(Implies(And(paths[i1][m][j], paths[i2][m][k]), j < k))
+
     
     solver.minimize(max_dist)
     

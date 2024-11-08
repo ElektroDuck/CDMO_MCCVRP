@@ -1,3 +1,5 @@
 z3-solver
 numpy
 minizinc
+scikit-learn
+
