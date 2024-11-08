@@ -101,12 +101,17 @@ if __name__ == "__main__":
         #extract the data from the dat file
         num_vehicles, num_clients, vehicles_capacity, packages_size, distances = extract_data_from_dat(instance_path)
 
+        instance = {
+            "num_vehicles": num_vehicles,
+            "num_clients": num_clients,
+            "vehicles_capacity": vehicles_capacity,
+            "packages_size": packages_size,
+            "distances": distances
+        }
 
         if method == "CP":
-            result = solvers.solve_cp(model_name, solver_id, num_vehicles, num_clients, vehicles_capacity, packages_size, distances, timeout_time, int_res)
+            result = solvers.solve_cp(model_name, solver_id, instance, timeout_time, int_res)
         elif method == "MIP":
-            result = solvers.solve_mip()
+            result = solvers.solve_mip(instance, timeout_time)
         elif method == "SMT":
-            result = solvers.solve_smt()
-
-    
+            result = solvers.solve_smt(instance, timeout_time)
