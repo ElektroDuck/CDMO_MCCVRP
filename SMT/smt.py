@@ -5,7 +5,6 @@ import numpy as np
 from upper_bound import compute_upper_bound
 import sys
 
-
 def callback(tmp_model):
     try:
         #print(f"\tIntermediate objective function value: {tmp_model.eval(max_dist)}")
