@@ -5,6 +5,9 @@ import argparse
 import solvers
 import json
 
+#Test: 
+#python main.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1-10 --solver gecode --timeout 20 --update_json True
+
 BASE_PATH = os.getcwd()
 
 
