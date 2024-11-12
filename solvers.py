@@ -143,14 +143,23 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res):
     res_arr = str(result.solution).split("|")
     
     succ_matrix = res_arr[0]
-    max_load_compute = res_arr[1]
+    max_dist_compute = res_arr[1]
 
     solution, distances = reconstruct_cp_solution(succ_matrix, num_vehicles, num_clients, distances)
 
 
     print(cp_solution_to_string(solution, distances))
 
-    print(f"Max distance Compute: {max_load_compute}")
+    print(f"Max distance Compute: {max_dist_compute}")
     print(f"Max distance reconstructed from sol: {max(distances)}")
     
     print("\n"+"*"*50+"\n")
+    solution = list([sol for sol in solution.values()])
+    
+    #for each element in the solution, convert it to a list and each element to an int
+    solution = [list(map(int, sol)) for sol in solution]
+
+    #delete the firt and last element for aeach list in the solution, in order to have only the clients
+    solution = [sol[1:-1] for sol in solution]
+
+    return {"time": solver_time+preprocessing_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}

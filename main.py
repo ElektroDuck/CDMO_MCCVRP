@@ -1,7 +1,9 @@
 import os
+import math
+import numpy as np
 import argparse
 import solvers
-
+import json
 
 BASE_PATH = os.getcwd()
 
@@ -77,16 +79,21 @@ def check_instance_file_exists(instance_n, method):
             file.write("{}")
 
 ## TO DO continue from here
-def update_json_file(instance_n, method, result):
+def update_json_file(instance_n, method, model_name, result):
     path = os.path.join(BASE_PATH, "res", method, f"{instance_n}.json")
     #open the json and update it with the new result
     with open(path, 'r') as file:
         data = file.read()
-        if data == "":
-            data = "{}"
-        data
+        data = json.loads(data)
+        data[model_name] = {}
+        
+        data[model_name]["time"] = math.floor(result["time"])
+        data[model_name]["optimal"] = result["optimal"]
+        data[model_name]["obj"] = result["obj"]
+        data[model_name]["sol"] = result["sol"]
 
-
+    with open(path, 'w') as file:
+        json.dump(data, file, indent=4)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script that takes method, model, and instance as input.")
@@ -143,8 +150,10 @@ if __name__ == "__main__":
             result = solvers.solve_smt(instance, timeout_time)
 
         #result: "time": 300, "optimal": false, "obj": 12, "sol" : [[3, 6, 5], [4, 2], [7, 1]]
+        
+        print(type(result['sol']))
 
         if update_json:
             check_model_folder_exists(method)
             check_instance_file_exists(instance_n, method)
-            update_json_file(instance_n, method, result)
+            update_json_file(instance_n, method, model_name, result)
