@@ -89,6 +89,31 @@ def reconstruct_cp_solution(succ_matrix, num_vehicles, num_clients, distance_mat
 
     return solution, distance
 
+def check_weights(packages_size, vehicles_capacity, solution):
+
+    loads = [sum([packages_size[i] for i in sol]) for sol in solution]
+
+
+    vc = vehicles_capacity.copy() 
+    sol = solution.copy() 
+    for _ in range(len(vehicles_capacity)): 
+        #take the index of the max element in the vehicles_capacity list
+        max_index = vc.index(max(vc))
+        #take the index of the max element in the loads list
+        max_load = loads.index(max(loads))
+        sol[max_index] = solution[max_load]
+        
+        print("loads", loads)
+        print("max_load", max_load)
+        print("vc", vc)
+        print("max_index", max_index)
+
+        #put the max load to 0 in order to avoid to take it again
+        loads[max_load] = 0
+        vc[max_index] = 0
+
+    return sol
+
 
 def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res): 
     model_path = get_cp_model_path(model_name)
@@ -111,7 +136,7 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res):
     preprocessing_time = end_time - start_time
 
     #sort the vehicle capacity list in order to implement the symmetry breaking constraints on the vehicle load
-    vehicles_capacity = sorted(vehicles_capacity, reverse=True)
+    #vehicles_capacity = sorted(vehicles_capacity, reverse=True)
     
     #assign the input variable to the minizinc variable
     instance["num_vehicles"] = num_vehicles
@@ -142,6 +167,11 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res):
 
     res_arr = str(result.solution).split("|")
     
+    if result.status is Status.UNKNOWN or result.status is Status.UNSATISFIABLE or result.status is Status.ERROR:
+        print("No solution found, exit status: ", result.status)  
+        return {"time": 300, "optimal": False, "obj": 0, "sol": []}
+
+
     succ_matrix = res_arr[0]
     max_dist_compute = res_arr[1]
 
@@ -161,5 +191,13 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res):
 
     #delete the firt and last element for aeach list in the solution, in order to have only the clients
     solution = [sol[1:-1] for sol in solution]
+
+    #TO DO, if we use the symmetry breaking constraint, we need to check the weights of the vehicles
+    #solution = check_weights(packages_size, vehicles_capacity, solution)
+
+    #add one to each element in the solution to have the correct index
+    solution = [[sol+1 for sol in s] for s in solution]
+    
+    print(solution)
 
     return {"time": solver_time+preprocessing_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
