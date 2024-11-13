@@ -92,7 +92,7 @@ def update_json_file(instance_n, method, model_name, result):
         
         data[model_name]["time"] = math.floor(result["time"])
         data[model_name]["optimal"] = result["optimal"]
-        data[model_name]["obj"] = result["obj"]
+        data[model_name]["obj"] = int(result["obj"])
         data[model_name]["sol"] = result["sol"]
 
     with open(path, 'w') as file:
