@@ -3,9 +3,7 @@ import numpy as np
 
 import time
 from datetime import timedelta
-
 from minizinc import Instance, Model, Solver, Status
-
 
 BASE_PATH = os.getcwd()
 
@@ -25,7 +23,58 @@ def compute_bounds(distances, num_vehicles, num_clients):
     dist_sorted = matrix_dist[np.max(matrix_dist, axis=0).argsort()]
     up_bound = sum([max(dist_sorted[i]) for i in range(num_vehicles-1, num_clients+1)])
 
-    return low_bound, min_dist_bound, up_bound 
+    return low_bound, min_dist_bound, up_bound
+
+def calculate_mccrp_bounds(distance_matrix):
+    """
+    Calculate approximate lower and upper bounds for MCCRP using distance matrix.
+    
+    Parameters:
+    distance_matrix (numpy.ndarray): A matrix where element [i][j] is the distance between node i and node j.
+    
+    Returns:
+    tuple: (lower_bound, upper_bound, min_dist_bound)
+    """
+    
+    # 1. Lower Bound Calculation 
+    matrix_dist = np.array(distance_matrix) #transform in numpy matrix
+    last_row = matrix_dist[-1, :]  # selects the last row
+    last_column = matrix_dist[:, -1]  # selects the last column
+    result = last_row + last_column
+    lower_bound = max(result)
+    
+    # 2. compute the minimum distance each vehicle has to travel
+    min_dist_bound = min(result) 
+
+    # 3. Upper Bound Calculation using a Greedy Heuristic
+    num_nodes = len(distance_matrix)
+    visited = [False] * num_nodes
+    total_cost = 0
+    current_node = 0  # Start at an arbitrary node, e.g., node 0
+    visited[current_node] = True
+    
+    for _ in range(num_nodes - 1):
+        # Find the nearest unvisited node
+        min_distance = float('inf')
+        next_node = None
+        
+        for neighbor in range(num_nodes):
+            if not visited[neighbor] and distance_matrix[current_node][neighbor] < min_distance:
+                min_distance = distance_matrix[current_node][neighbor]
+                next_node = neighbor
+        
+        # Move to the next closest node
+        if next_node is not None:
+            total_cost += min_distance
+            visited[next_node] = True
+            current_node = next_node
+    
+    # Return to the starting node to complete the tour
+    upper_bound = total_cost + distance_matrix[current_node][0]
+    
+    return lower_bound, upper_bound, min_dist_bound
+
+
 
 def check_simmetry(d):
     """
@@ -131,7 +180,8 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res):
 
     #compute upper and lower bound
     start_time = time.time()
-    low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
+    #low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
+    low_bound, up_bound, min_dist_bound = calculate_mccrp_bounds(matrix_dist) 
     end_time = time.time()
     preprocessing_time = end_time - start_time
 
