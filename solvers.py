@@ -5,6 +5,9 @@ import time
 from datetime import timedelta
 from minizinc import Instance, Model, Solver, Status
 
+import gurobipy as gb
+
+
 BASE_PATH = os.getcwd()
 
 def get_cp_model_path(model_name):
@@ -73,8 +76,6 @@ def calculate_mccrp_bounds(distance_matrix):
     upper_bound = total_cost + distance_matrix[current_node][0]
     
     return lower_bound, upper_bound, min_dist_bound
-
-
 
 def check_simmetry(d):
     """
@@ -163,8 +164,49 @@ def check_weights(packages_size, vehicles_capacity, solution):
 
     return sol
 
+def get_gurobi_env():
+    """LICENSE"""
+    # LICENSE FOR ACADEMIC VERSION OF GUROBI
+    # Create an environment with your WLS license
+    params = {
+    "WLSACCESSID": '216dd889-fa22-449b-a888-e35218548ac7',
+    "WLSSECRET": 'c4660e0b-df0a-49a3-b518-0791ddc21565',
+    "LICENSEID": 2581103,
+    }
+    env = gb.Env(params=params)
+    return env
 
-def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res): 
+def retrieve_elements(middle,first):
+    for i in middle:
+        if i[0]==first:
+            return i
+
+def reconstruct_gurobi_solution(x):
+    routes = {}
+    for (i, j, k) in x:
+        if x[(i, j, k)].x == 1:
+            if k not in routes:
+                routes[k] = [(i, j)]
+            else:
+                routes[k].append((i, j))
+    #reordering
+    for k in routes:
+        start = next((t for t in routes[k] if t[0] == 0), None)
+        end = next((t for t in routes[k] if t[1] == 0), None)
+        if start and end:
+            routes[k].remove(start)
+            routes[k].remove(end)
+            middle=[t for t in routes[k] if t != start and t != end]
+            sorted = []
+            token = start[1]
+            for el in routes[k]:
+                element = retrieve_elements(middle,token)
+                sorted.append(element)
+                token = element[1]
+            routes[k] = [start] + sorted + [end]
+    return routes
+
+def solve_cp(model_name, solver_id, instance_data, timeout_time): 
     model_path = get_cp_model_path(model_name)
 
     #instanciate the model
@@ -176,8 +218,6 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res):
 
     #transform in numpy matrix
     matrix_dist=np.array(distances) 
-
-
     #compute upper and lower bound
     start_time = time.time()
     #low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
@@ -251,3 +291,112 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time, int_res):
     print(solution)
 
     return {"time": solver_time+preprocessing_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
+
+def solve_ilp_guroby(instance_data, timeout_time):
+
+    distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
+
+    #transform in numpy matrix
+    matrix_dist=np.array(distances) 
+    #compute upper and lower bound
+    start_time = time.time()
+    #low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
+    low_bound, up_bound, min_dist_bound = calculate_mccrp_bounds(matrix_dist) 
+    end_time = time.time()
+    preprocessing_time = end_time - start_time
+
+    CUSTOMERS = list(range(1,num_clients+1))
+    NODES = list(range(0, num_clients+1)) 
+    COURIERS = list(range(1,num_vehicles+1))
+
+    # Create an environment with your WLS license
+
+    env = get_gurobi_env()
+    model = gb.Model(name="MCCVRP",env=env)
+    x = model.addVars(NODES,NODES,COURIERS, vtype=gb.GRB.BINARY, name="x_ijk")
+    y = model.addVars(NODES,COURIERS, vtype=gb.GRB.BINARY, name="y_ik")
+    d = model.addVars(CUSTOMERS, COURIERS, vtype=gb.GRB.CONTINUOUS, name="d_ik")
+    max_distance = model.addVar(name='max_distance')
+    model.setObjective(max_distance, sense=gb.GRB.MINIMIZE)
+    
+    for k in COURIERS:
+        model.addConstr(gb.quicksum(x[i,j,k]*distances[i-1][j-1] for i in NODES for j in NODES) <= max_distance)
+
+    # CONSTRAINTS 
+    #Upper e lower bound constraints
+    model.addConstr(max_distance <= up_bound)
+    model.addConstr(max_distance >= low_bound)
+
+    #all the curriers are used
+    model.addConstr(gb.quicksum(y[0,k] for k in COURIERS)==num_vehicles)
+    
+    for i in CUSTOMERS:
+        #each item is assigned to only one courier
+        model.addConstr(gb.quicksum(y[i,k] for k in COURIERS)==1)
+        #starting from a node every customer must go to an another node
+        model.addConstr(gb.quicksum(x[i,j,k] for j in NODES for k in COURIERS)==1)
+
+    for j in CUSTOMERS:
+        #each customer has exactly one predecessor
+        model.addConstr(gb.quicksum(x[i,j,k] for i in NODES for k in COURIERS)==1)
+
+    for k in COURIERS:
+        #the sum of the packages assigned to each courier must be less than the capacity of the vehicle
+        model.addConstr(gb.quicksum(y[i,k]*packages_size[i-1] for i in CUSTOMERS)<=vehicles_capacity[k-1])
+        #the main diagonal of x must be 0, since a customer can't be the predecessor of itself 
+        model.addConstr(gb.quicksum(x[j,j,k] for j in NODES)==0)
+        #each currier must go back to the depot
+        model.addConstr(gb.quicksum(x[i,0,k] for i in NODES)==1)
+
+    for i in CUSTOMERS:
+        for k in COURIERS:
+            #if a currier is covering a route i to j, then the currier is also covering the route j to i
+            model.addConstr(gb.quicksum(x[i,j,k] for j in NODES)==gb.quicksum(x[j,i,k] for j in NODES))
+            #if a currier is covering a route i to j, then we assign the item to the vehicle in the decision variable y 
+            model.addConstr(gb.quicksum(x[j,i,k] for j in NODES)==y[i,k])
+
+#Bho sembra stupido lol
+#    for k in COURIERS:
+#        for j in NODES:
+#            model.addConstr(gb.quicksum(x[i,j,k] for i in NODES) == gb.quicksum(x[i,j,k] for i in NODES))
+
+    #Subtour elimination using MTZ formulation
+    for k in COURIERS:
+        for i in CUSTOMERS:
+            for j in CUSTOMERS:
+                if i != j:
+                    model.addConstr(d[i, k] - d[j, k] + num_clients * x[i, j, k] <= num_clients - 1)
+
+#sembra ridondante, non si capisce dove prende la k
+#    for i in CUSTOMERS:
+#        for j in CUSTOMERS:
+#            if i != j:
+#                model.addConstr(d[i, k] - d[j , k] + num_clients * x[i, j, k] <= num_clients - 1)
+
+    # Set the time limit 
+    time_limit = timeout_time - preprocessing_time
+    model.setParam(gb.GRB.Param.TimeLimit, time_limit)
+
+    start_time = time.time()
+    model.optimize()
+    end_time = time.time()
+    solver_time = end_time - start_time
+    
+    print("SOLUTION FOUND ", model.objVal)
+
+        # Check the optimization status and retrieve the solution if available
+    print("#"*50)
+    print(f"\nFinished with state: {model.status} after {round(solver_time, 4)}s, preprocessing time: {round(preprocessing_time, 4)}s")
+    print("RESULTS:")
+    print("Objective value: ", model.objVal)
+
+    routes = reconstruct_gurobi_solution(x)
+    
+    for k, route in sorted(routes.items(), key=lambda item: item[0]):
+            print(f"Courier {k} route: {route}")
+    
+    return {"time": model.Runtime, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": []}
+
+
+
+
