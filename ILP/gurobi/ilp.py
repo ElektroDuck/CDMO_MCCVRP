@@ -25,7 +25,11 @@ for i in range(1,22):
         instance=f"0{i}"
     else:
         instance=f"{i}"
-    file_name = f"../../Instances/inst{instance}.dat"
+    #file_name = f"../../Instances/inst{instance}.dat"
+
+    #convert the file name to windows format
+    file_name = os.path.join('Instances', f'inst{instance}.dat')
+    
 
     """LICENSE"""
     # LICENSE FOR ACADEMIC VERSION OF GUROBI
