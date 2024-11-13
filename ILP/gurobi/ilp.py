@@ -1,25 +1,43 @@
 import gurobipy as gp
 from gurobipy import GRB, Model, quicksum
 import os, json, math, time
+from upper_bound import compute_upper_bound
+import numpy as np
+
+
+def compute_bounds(distances, num_vehicles, num_clients):
+    matrix_dist = np.array(distances) #transform in numpy matrix
+    last_row = matrix_dist[-1, :]  # selects the last row
+    last_column = matrix_dist[:, -1]  # selects the last column
+    result = last_row + last_column
+    low_bound = max(result)
+    #up_bound = sum([max(matrix_dist[i] for i in range(num_vehicles-1, num_clients))])
+    min_dist_bound = min(result)
+
+    dist_sorted = matrix_dist[np.max(matrix_dist, axis=0).argsort()]
+    up_bound = sum([max(dist_sorted[i]) for i in range(num_vehicles-1, num_clients+1)])
+
+    return low_bound, min_dist_bound, up_bound
+
 
 for i in range(1,22):
     if i<10:
         instance=f"0{i}"
     else:
         instance=f"{i}"
-    file_name = f"Instances/inst{instance}.dat"
+    file_name = f"../../Instances/inst{instance}.dat"
 
     """LICENSE"""
     # LICENSE FOR ACADEMIC VERSION OF GUROBI
     # Create an environment with your WLS license
-    """
+
     params = {
-    "WLSACCESSID": '',
-    "WLSSECRET": '',
-    "LICENSEID": ,
+    "WLSACCESSID": '216dd889-fa22-449b-a888-e35218548ac7',
+    "WLSSECRET": 'c4660e0b-df0a-49a3-b518-0791ddc21565',
+    "LICENSEID": 2581103,
     }
     env = gp.Env(params=params)
-    """
+
 
     '''Reading from the file and visualization'''
     f = open(file_name, "r")
@@ -32,6 +50,9 @@ for i in range(1,22):
     for i in range(num_items+1):
         distances.append([int(x) for x in f.readline().split()])
     f.close()
+
+    ub,_ = compute_upper_bound(distances)
+    lb,_,_ = compute_bounds(distances, num_couriers, num_items)
 
     num_customers = num_items
     CUSTOMERS = list(range(1,num_customers+1))
@@ -50,6 +71,9 @@ for i in range(1,22):
         model.addConstr(quicksum(x[i,j,k]*distances[i-1][j-1] for i in V for j in V) <= max_distance)
 
     '''CONSTRAINTS'''
+    model.addConstr(max_distance <= ub)
+    model.addConstr(max_distance >= lb)
+
     for i in CUSTOMERS:
         model.addConstr(quicksum(y[i,k] for k in COURIERS)==1)
         model.addConstr(quicksum(x[i,j,k] for j in V for k in COURIERS)==1)

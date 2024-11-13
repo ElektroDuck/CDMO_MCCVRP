@@ -2,7 +2,7 @@ from z3 import *
 from timeit import default_timer as timer
 import json
 import numpy as np
-from upper_bound import compute_upper_bound
+from utilities.utilities import compute_upper_bound
 
 
 def callback(tmp_model):
@@ -23,7 +23,7 @@ def compute_bounds(distances, num_vehicles, num_clients):
 
     return low_bound, min_dist_bound, up_bound
 
-for i in range(13, 22):
+for i in range(1, 22):
     if i < 10:
         instance = "0"+str(i)
     else:
@@ -51,7 +51,8 @@ for i in range(13, 22):
     solver = Optimize()
     solver.set_on_model(callback)
     callback.step_counter = 0
-    solver.set("timeout", 5*60*1000)
+    solver.set("timeout", 10000) 
+
 
 
 
