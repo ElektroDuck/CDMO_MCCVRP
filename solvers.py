@@ -88,7 +88,9 @@ def check_simmetry(d):
     dt = np.transpose(d)
     return np.sum(dt==d) == (n*m)
 
-def cp_solution_to_string(solution_dict, distances):
+def solution_to_string(solution_dict, distances):
+    print("solution_dict", solution_dict)
+
     string = ""
     for key, value in solution_dict.items():
         string += f"Vehicle {key+1} tour: (distance {distances[key]}) \n "
@@ -97,6 +99,24 @@ def cp_solution_to_string(solution_dict, distances):
             string += f" -> {i}"
         string += "\n"
     return string
+
+def compute_distances(distance_matrix, solution, num_vehicles):
+    #using the distance matrix and the solution, compute the total distance for each vehicle
+    distance =[]
+    keys = list(solution.keys())
+    start, end = min(keys), max(keys)+1
+
+    for i in range(start, end):
+        total_distance = 0
+        print("currier ", i)
+        for j in range(0, len(solution[i])-1):
+            print("from ", solution[i][j], "to ", solution[i][j+1])
+            total_distance += distance_matrix[solution[i][j]][solution[i][j+1]]
+        distance.append(total_distance)
+        print("total distance currier ", i , ": ", total_distance)
+        print()
+
+    return distance
 
 def cp_extract_route(row_arr, num_clients, prev=[]):
     if prev == []:
@@ -129,13 +149,7 @@ def reconstruct_cp_solution(succ_matrix, num_vehicles, num_clients, distance_mat
         #extract the route from the succ_matrix and store it in the solution dictionary
         solution[i] = cp_extract_route(succ_matrix[i], num_clients)
 
-    #using the distance matrix and the solution, compute the total distance for each vehicle
-    distance =[]
-    for i in range(0, num_vehicles):
-        total_distance = 0
-        for j in range(0, len(solution[i])-1):
-            total_distance += distance_matrix[solution[i][j]][solution[i][j+1]]
-        distance.append(total_distance)
+    distance = compute_distances(distance_matrix, solution, num_vehicles)
 
     return solution, distance
 
@@ -181,7 +195,7 @@ def retrieve_elements(middle,first):
         if i[0]==first:
             return i
 
-def reconstruct_gurobi_solution(x):
+def reconstruct_gurobi_solution(x, num_vehicles, distance_matrix, n_clients):
     routes = {}
     for (i, j, k) in x:
         if x[(i, j, k)].x == 1:
@@ -189,10 +203,11 @@ def reconstruct_gurobi_solution(x):
                 routes[k] = [(i, j)]
             else:
                 routes[k].append((i, j))
-    #reordering
+
     for k in routes:
         start = next((t for t in routes[k] if t[0] == 0), None)
         end = next((t for t in routes[k] if t[1] == 0), None)
+
         if start and end:
             routes[k].remove(start)
             routes[k].remove(end)
@@ -204,7 +219,22 @@ def reconstruct_gurobi_solution(x):
                 sorted.append(element)
                 token = element[1]
             routes[k] = [start] + sorted + [end]
-    return routes
+
+    for k in routes:
+        routes[k] = [t[0] for t in routes[k]]
+        routes[k] = [i-1 for i in routes[k]]
+        routes[k][0] = n_clients
+        routes[k] = routes[k] + [n_clients]
+    
+    print(routes)
+    solution = {}
+    for k in routes:
+        solution[k-1] = routes[k]
+    print(solution)
+
+    distances = compute_distances(distance_matrix, solution, num_vehicles)
+
+    return solution, distances
 
 def solve_cp(model_name, solver_id, instance_data, timeout_time): 
     model_path = get_cp_model_path(model_name)
@@ -268,7 +298,7 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
     solution, distances = reconstruct_cp_solution(succ_matrix, num_vehicles, num_clients, distances)
 
 
-    print(cp_solution_to_string(solution, distances))
+    print(solution_to_string(solution, distances))
 
     print(f"Max distance Compute: {max_dist_compute}")
     print(f"Max distance reconstructed from sol: {max(distances)}")
@@ -322,7 +352,8 @@ def solve_ilp_guroby(instance_data, timeout_time):
     for k in COURIERS:
         model.addConstr(gb.quicksum(x[i,j,k]*distances[i-1][j-1] for i in NODES for j in NODES) <= max_distance)
 
-    # CONSTRAINTS 
+    # CONSTRAINTS
+    
     #Upper e lower bound constraints
     model.addConstr(max_distance <= up_bound)
     model.addConstr(max_distance >= low_bound)
@@ -356,9 +387,9 @@ def solve_ilp_guroby(instance_data, timeout_time):
             model.addConstr(gb.quicksum(x[j,i,k] for j in NODES)==y[i,k])
 
 #Bho sembra stupido lol
-#    for k in COURIERS:
-#        for j in NODES:
-#            model.addConstr(gb.quicksum(x[i,j,k] for i in NODES) == gb.quicksum(x[i,j,k] for i in NODES))
+    for k in COURIERS:
+        for j in NODES:
+            model.addConstr(gb.quicksum(x[i,j,k] for i in NODES) == gb.quicksum(x[i,j,k] for i in NODES))
 
     #Subtour elimination using MTZ formulation
     for k in COURIERS:
@@ -368,10 +399,10 @@ def solve_ilp_guroby(instance_data, timeout_time):
                     model.addConstr(d[i, k] - d[j, k] + num_clients * x[i, j, k] <= num_clients - 1)
 
 #sembra ridondante, non si capisce dove prende la k
-#    for i in CUSTOMERS:
-#        for j in CUSTOMERS:
-#            if i != j:
-#                model.addConstr(d[i, k] - d[j , k] + num_clients * x[i, j, k] <= num_clients - 1)
+    for i in CUSTOMERS:
+        for j in CUSTOMERS:
+            if i != j:
+                model.addConstr(d[i, k] - d[j , k] + num_clients * x[i, j, k] <= num_clients - 1)
 
     # Set the time limit 
     time_limit = timeout_time - preprocessing_time
@@ -388,15 +419,24 @@ def solve_ilp_guroby(instance_data, timeout_time):
     print("#"*50)
     print(f"\nFinished with state: {model.status} after {round(solver_time, 4)}s, preprocessing time: {round(preprocessing_time, 4)}s")
     print("RESULTS:")
-    print("Objective value: ", model.objVal)
+    print("max distance: ", model.objVal)
 
-    routes = reconstruct_gurobi_solution(x)
-    
-    for k, route in sorted(routes.items(), key=lambda item: item[0]):
-            print(f"Courier {k} route: {route}")
-    
-    return {"time": model.Runtime, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": []}
+    routes, distances = reconstruct_gurobi_solution(x, num_vehicles, distances, num_clients)
+
+    print("routes", routes)
+    print("distances", distances)
+
+    print(solution_to_string(routes, distances))
+
+    print(routes)
 
 
+    solution = list([sol for sol in routes.values()])
+    #for each element in the solution, convert it to a list and each element to an int
+    solution = [list(map(int, sol)) for sol in solution]
+    #delete the firt and last element for aeach list in the solution, in order to have only the clients
+    solution = [sol[1:-1] for sol in solution]
+    #add one to each element in the solution to have the correct index
+    solution = [[sol+1 for sol in s] for s in solution]
 
-
+    return {"time": model.Runtime, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": solution}
