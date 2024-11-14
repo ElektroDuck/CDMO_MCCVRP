@@ -2,13 +2,16 @@ import subprocess
 import json
 
 for i in range(1,21):
+    # Running throught all the instances
     flag = False
     try:
+        # Calling the SMT solver as a subprocess, so we can apply timeout
         subprocess.call(["python3", "smt_subprocess.py", str(i)], timeout=300)
     except subprocess.TimeoutExpired:
         print("TIMEOUT: ",i)
         flag = True
 
+    # Saving results
     if flag:
         result_dict = {
             "time" : 300,

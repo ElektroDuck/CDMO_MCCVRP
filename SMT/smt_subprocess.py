@@ -8,6 +8,7 @@ import argparse
 import json
 
 
+#Initialization of the instance
 start = time.time()
 parser = argparse.ArgumentParser()
 parser.add_argument("inst")
@@ -16,7 +17,10 @@ inst = int(args.inst)
 instance = f"inst0{inst}.dat" if inst < 10 else f"inst{inst}.dat"
 
 
-def create_result_dict(model):
+def create_result_dict(model, is_final):
+    """
+    This function, given a model, will create the result dict in JSON format
+    """
     global start
     best_paths_dict = {}
     for i in range(n):
@@ -32,46 +36,51 @@ def create_result_dict(model):
 
     
     best_paths = []
-    for percorso in unordered_paths:
+    for path in unordered_paths:
         # Crea un dizionario per mappare partenza -> arrivo
-        percorso_dict = {partenza: arrivo for partenza, arrivo in percorso}
+        path_dict = {starting_point: ending_point for starting_point, ending_point in path}
         
         # Inizia dal nodo `m`
-        percorso_ordinato = [(m, percorso_dict[m])]
+        ordered_paths = [(m, path_dict[m])]
         
         # Continua a cercare il prossimo nodo finché non torni a `m`
-        while percorso_ordinato[-1][1] != m:
-            partenza = percorso_ordinato[-1][1]
-            arrivo = percorso_dict[partenza]
-            percorso_ordinato.append((partenza, arrivo))
+        while ordered_paths[-1][1] != m:
+            partenza = ordered_paths[-1][1]
+            arrivo = path_dict[partenza]
+            ordered_paths.append((partenza, arrivo))
         
-        best_paths.append(percorso_ordinato)
+        best_paths.append(ordered_paths)
 
 
-    #costs = [sum(distances[path[0]][path[1]] for path in courier_path) for courier_path in best_paths]        
+    # This line will generate a list of all the costs of the paths (unused)
+    #costs = [sum(distances[path[0]][path[1]] for path in courier_path) for courier_path in best_paths]     
     best_paths = [[x[1] for x in path[:-1]] for path in best_paths]
     
 
 
-
+    
     result_dict = {
     "time" : min(300,int(time.time() - start)),
-    "optimal" : True,
+    "optimal" : is_final,
     "obj" : int(model.eval(max_dist).as_string()),
     "sol" : best_paths
     }
 
     return result_dict
 
+
 def callback(tmp_model):
-    res_dict = create_result_dict(tmp_model)
+    """
+    This function will be used to save intermediate results
+    """
+    res_dict = create_result_dict(tmp_model, False)
     with open("tmp_output.json", "w") as f:
         json.dump(res_dict, f)
 
 
 
 
-
+# Opening the instance
 if os.path.exists("../Instances"):
     with open("../Instances/"+instance, 'r') as file:
         lines = file.readlines()
@@ -85,23 +94,23 @@ if os.path.exists("../Instances"):
     distances = [list(map(int, line.strip().split())) for line in lines[4:]]
 
 
-# Definisco i parametri
-n = num_vehicles  # numero di righe
-m = num_clients  # numero di colonne
-
+# parameter definition
+n = num_vehicles
+m = num_clients
 ub = compute_upper_bound(distances)
 lb = compute_lower_bound(distances, num_vehicles, num_clients)
-
 
 # Define decision variables
 paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(m+1)] for j in range(m+1)] for i in range(n)]
 num_visit = [Int(f"num_visit{i}") for i in range(m)]
 
 
-# Creo un solver Z3
+#  creating the solver
 solver = Optimize()
+# Setting the callback for intermediate results
 solver.set_on_model(callback)
-# Aggiungo i vincoli:
+
+# Adding constraints
 
 # Constraints on decision variables domains
 for i in range(m):
@@ -134,7 +143,7 @@ solver.add(Sum([paths[i][j][j] for j in range(m+1) for i in range(n)]) == 0)
 for i in range(n):
     solver.add(And(Sum([paths[i][m][k] for k in range(m)]) == 1, Sum([paths[i][j][m] for j in range(m)]) == 1))
 
-# Define the objective function
+# Define the objective function and apply upper and lower bounds
 max_dist = Int("max_dist")
 solver.add(max_dist <= ub)
 solver.add(max_dist >= lb)
@@ -142,7 +151,7 @@ for i in range(n):
     solver.add(Sum([paths[i][j][k]*distances[j][k] for j in range(m+1) for k in range(m+1)]) <= max_dist)
 
 
-# Symmetry breaking (non so come funzioni)
+# Symmetry breaking constraint
 for i1 in range(n):
     for i2 in range(n):
         if i1 < i2 and vehicles_capacity[i1] == vehicles_capacity[i2]:
@@ -153,14 +162,14 @@ for i1 in range(n):
 
 solver.minimize(max_dist)
 
-
+# Run the solver
 if solver.check() == sat:
     model = solver.model()
-    result_dict = create_result_dict(model)
+    result_dict = create_result_dict(model, True)
     with open("tmp_output.json", "w") as f:
         json.dump(result_dict, f)
 
-
+# If the model is not sat...
 else:
     result_dict = {
     "time" : 300,
