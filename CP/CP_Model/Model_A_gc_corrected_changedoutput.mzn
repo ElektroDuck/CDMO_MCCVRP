@@ -25,28 +25,37 @@ array[vehicles] of var 0..max_load: couriers_loads;
 var low_bound..up_bound: maximum; 
 % Constraints
 
-%- 1 Circuit, every path must be closed
+%Subcirtuit: every path must be closed
 constraint forall(vehicle in vehicles) (
-      subcircuit(successor[vehicle, nodes]));
-      
+      subcircuit(successor[vehicle, nodes])); %Checks that every courrier has a cyclic path
 constraint forall(vehicle in vehicles) (
-      alldifferent(successor[vehicle,nodes]));
+      alldifferent(successor[vehicle,nodes])); %Redundant constraint, already implied in subcircuit
 
-%2. Ensure that each courier starts and ends in origin point
+%Load Capacity: every courrier must carry less wight than its maximum capacity
+constraint forall(vehicle in vehicles)(
+    couriers_loads[vehicle] = sum(
+            [size[client] | client in clients where loads[client]=vehicle]
+    )
+);    
+constraint forall(vehicle in vehicles)(
+    couriers_loads[vehicle]<=capacity[vehicle]
+    );
+    
+%Every item must be taken only once
+constraint forall(client in clients)(
+      count(el in successor[vehicles, client])(el!=client)==1);
 
-%- 2.1 Ensure that all the vehicle leave the depo by forcing the last column of the matrix to be different from the depo idx
+%Every courrier must leave the depot
 constraint forall(veicle in vehicles)(successor[veicle, num_clients+1] != num_clients+1); 
 
-%- 2.2 Ensure that the vehicle come back to the depo
+%every courrier must come back to the depot
 constraint forall(vehicle in vehicles)(count(successor[vehicle, clients], num_clients+1, 1));
 
-
-%- 3 Ensure each item is assigned only to one courier
-constraint forall(client in clients)(
-      count(successor[vehicles, client], client, num_vehicles-1)
-);
-
-%- 4 Checking the loads
+%- 4.2 ensure that each courier does not exceed the max capacity %PROVA AD AGGIUNGERE BIN PACKING MANUALE
+constraint bin_packing_capa(
+                           capacity,
+                           loads,
+                           size);
 
 %- 4.1 Setting the loads to verify the load_size for each courier
 constraint forall(vehicle in vehicles) (
@@ -55,42 +64,18 @@ constraint forall(vehicle in vehicles) (
           loads[client] = vehicle endif
           )
 );
-%- 4.2 ensure that each courier does not exceed the max capacity
-constraint bin_packing_capa(
-                           capacity,
-                           loads,
-                           size);
-
-%SIMMETRY BREAKING
-
-% Symmetry breaking based on loads for couriers with the same capacity
-constraint forall(v in 1..num_vehicles, ov in v+1..num_vehicles where capacity[v]==capacity[ov])
-    ( lex_less(successor[v, nodes],successor[ov,nodes]));
     
 %OBJECTIVE FUNCTION                           
 
 % distance computation
 constraint forall(vehicle in vehicles) (
-      vehicle_dist[vehicle] = sum([distances[i, successor[vehicle, i]]| i in nodes]) %where successor[vehicle, i] != i])
+      vehicle_dist[vehicle] = sum([distances[i, successor[vehicle, i]]| i in nodes])
 );
-% Channeling constraint, define the loads of the couriers
-constraint forall(vehicle in vehicles)(
-    couriers_loads[vehicle] = sum(
-            [size[client] | client in clients where loads[client]=vehicle]
-    )
-);
-% sub tour elimination, if the last courier can carry all the packages
-% then all courier must start
-%constraint forall(k in vehicles) (
-%                  if capacity[num_vehicles] >= max(size) then 
-%                  successor[k, num_clients+1] != num_clients+1   
-%                  endif
-%            );
-
+%max distance
 constraint maximum = max(vehicle_dist);
-%var int: max_dist = max(j in vehicles)(sum(i in nodes)(distances[i, successor[j,i]]));
+
 solve 
-:: int_search(successor, dom_w_deg, indomain_random) %for chuffed solver comment this line (not implemented by minizinc yet)
+::int_search(successor,dom_w_deg,indomain_random)%:: seq_search([int_search(successor, first_fail, indomain_random), int_search(successor, dom_w_deg, indomain_random)])::restart_luby(10)::relax_and_reconstruct(array1d(successor),80) %for chuffed solver comment this line (not implemented by minizinc yet)
 minimize maximum;
 
 
