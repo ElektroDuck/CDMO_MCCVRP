@@ -146,7 +146,7 @@ if __name__ == "__main__":
         }
 
         if method == "CP":
-            result = solvers.solve_cp(model_name, solver_id, instance, timeout_time, int_res)
+            result = solvers.solve_cp(model_name, solver_id, instance, timeout_time)
         elif method == "MIP":
             result = solvers.solve_ilp_guroby(instance, timeout_time)
         elif method == "SMT":
