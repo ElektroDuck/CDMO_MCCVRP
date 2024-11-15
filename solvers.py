@@ -310,8 +310,6 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
     #delete the firt and last element for aeach list in the solution, in order to have only the clients
     solution = [sol[1:-1] for sol in solution]
 
-    #TO DO, if we use the symmetry breaking constraint, we need to check the weights of the vehicles
-    #solution = check_weights(packages_size, vehicles_capacity, solution)
 
     #add one to each element in the solution to have the correct index
     solution = [[sol+1 for sol in s] for s in solution]
