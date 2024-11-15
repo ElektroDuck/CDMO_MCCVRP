@@ -310,13 +310,18 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
     #delete the firt and last element for aeach list in the solution, in order to have only the clients
     solution = [sol[1:-1] for sol in solution]
 
-
     #add one to each element in the solution to have the correct index
     solution = [[sol+1 for sol in s] for s in solution]
     
     print(solution)
 
-    return {"time": solver_time+preprocessing_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
+    total_time = solver_time+preprocessing_time
+
+    #Since the solver dosn't stop exactly at the given second ensure the constraint sol_not_optimal -> time = timeout_time
+    if result.status is not Status.OPTIMAL_SOLUTION:
+        total_time = timeout_time
+
+    return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
 
 def solve_ilp_guroby(instance_data, timeout_time):
 
@@ -422,4 +427,10 @@ def solve_ilp_guroby(instance_data, timeout_time):
     #add one to each element in the solution to have the correct index
     solution = [[sol+1 for sol in s] for s in solution]
 
-    return {"time": model.Runtime, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": solution}
+    sol_time = model.Runtime + preprocessing_time
+    
+    #since the solver dosn't stop exactly at the given second ensure the constraint sol_not_optimal -> time = 300
+    if model.status != gb.GRB.OPTIMAL:
+        sol_time = timeout_time
+
+    return {"time": sol_time, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": solution}
