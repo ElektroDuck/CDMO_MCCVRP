@@ -45,10 +45,17 @@ def calculate_mccrp_bounds(distance_matrix):
     
     return lower_bound, upper_bound
 
+# Example distance matrix (symmetric for simplicity in routing)
+distance_matrix = np.array([
+    [0, 3, 4, 5, 6, 6, 2],
+	[3, 0, 1, 4, 5, 7, 3],
+	[4, 1, 0, 5, 6, 6, 4],
+	[4, 4, 5, 0, 3, 3, 2],
+	[6, 7, 8, 3, 0, 2, 4],
+	[6, 7, 8, 3, 2, 0, 4],
+	[2, 3, 4, 3, 4, 4, 0]
+])
 
-
-
-def compute_upper_bound(matrix):
-    matrix = np.array(matrix)
-    lower_bound, upper_bound = calculate_mccrp_bounds(matrix)
-    return upper_bound, lower_bound
+lower_bound, upper_bound = calculate_mccrp_bounds(distance_matrix)
+print(f"Lower Bound: {lower_bound}")
+print(f"Upper Bound: {upper_bound}")
