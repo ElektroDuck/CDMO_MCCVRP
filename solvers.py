@@ -203,9 +203,6 @@ def reconstruct_gurobi_solution(x, num_vehicles, distance_matrix, n_clients):
             else:
                 routes[k].append((i, j))
     
-    # ok until here
-    print("DEBUG routes ", routes) 
-
     for k in routes:
         start = next((t for t in routes[k] if t[0] == 0), None)
         end = next((t for t in routes[k] if t[1] == 0), None)
@@ -222,29 +219,17 @@ def reconstruct_gurobi_solution(x, num_vehicles, distance_matrix, n_clients):
                 token = element[1]
             routes[k] = [start] + sorted + [end]
 
-    print("DEBUG routes ", routes)
-    
-
     for k in routes:
-        print(f"DEBUG routes[{k}] ", routes[k])
         routes[k] = [t[0] for t in routes[k]]
         routes[k] = [i-1 for i in routes[k]]
         routes[k][0] = n_clients
         routes[k] = routes[k] + [n_clients]
     
-    print("DEBUG routes ", routes)
-    
-
     solution = {}
     for k in routes:
         solution[k-1] = routes[k]
 
-    print("DEBUG routes ", solution)
-    
-
     distances = compute_distances(distance_matrix, solution, num_vehicles)
-
-    print("DEBUG distances ", distances)
 
     return solution, distances
 
@@ -402,23 +387,12 @@ def solve_ilp_guroby(instance_data, timeout_time):
             #if a currier is covering a route i to j, then we assign the item to the vehicle in the decision variable y 
             model.addConstr(gb.quicksum(x[j,i,k] for j in NODES)==y[i,k])
 
-#Bho sembra stupido lol
-#    for k in COURIERS:
-#        for j in NODES:
-#            model.addConstr(gb.quicksum(x[i,j,k] for i in NODES) == gb.quicksum(x[i,j,k] for i in NODES))
-
     #Subtour elimination using MTZ formulation
     for k in COURIERS:
         for i in CUSTOMERS:
             for j in CUSTOMERS:
                 if i != j:
                     model.addConstr(d[i, k] - d[j, k] + num_clients * x[i, j, k] <= num_clients - 1)
-
-#sembra ridondante, non si capisce dove prende la k
-#    for i in CUSTOMERS:
-#        for j in CUSTOMERS:
-#            if i != j:
-#                model.addConstr(d[i, k] - d[j , k] + num_clients * x[i, j, k] <= num_clients - 1)
 
     # Set the time limit 
     time_limit = timeout_time - preprocessing_time
@@ -440,20 +414,9 @@ def solve_ilp_guroby(instance_data, timeout_time):
 
     routes, distances = reconstruct_gurobi_solution(x, num_vehicles, distances, num_clients)
 
-    print("DEBUG routes ", routes)
-    print("DEBUG distances ", distances)
-    
-    #print(solution_to_string(routes, distances))
-
-    #print(routes)
-
-    #solution = list([sol for sol in routes.values()]) #THE ERROR IS HERE
-    #print("DEBUG solution ", solution)
+    print(solution_to_string(routes, distances))
 
     solution = list([routes[i] for i in sorted(routes.keys())])
-
-    print("DEBUG solution ", solution)
-
     #for each element in the solution, convert it to a list and each element to an int
     solution = [list(map(int, sol)) for sol in solution]
     #delete the firt and last element for aeach list in the solution, in order to have only the clients
