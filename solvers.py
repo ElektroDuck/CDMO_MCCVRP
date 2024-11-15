@@ -157,7 +157,6 @@ def check_weights(packages_size, vehicles_capacity, solution):
 
     loads = [sum([packages_size[i] for i in sol]) for sol in solution]
 
-
     vc = vehicles_capacity.copy() 
     sol = solution.copy() 
     for _ in range(len(vehicles_capacity)): 
@@ -203,6 +202,9 @@ def reconstruct_gurobi_solution(x, num_vehicles, distance_matrix, n_clients):
                 routes[k] = [(i, j)]
             else:
                 routes[k].append((i, j))
+    
+    # ok until here
+    print("DEBUG routes ", routes) 
 
     for k in routes:
         start = next((t for t in routes[k] if t[0] == 0), None)
@@ -220,19 +222,29 @@ def reconstruct_gurobi_solution(x, num_vehicles, distance_matrix, n_clients):
                 token = element[1]
             routes[k] = [start] + sorted + [end]
 
+    print("DEBUG routes ", routes)
+    
+
     for k in routes:
+        print(f"DEBUG routes[{k}] ", routes[k])
         routes[k] = [t[0] for t in routes[k]]
         routes[k] = [i-1 for i in routes[k]]
         routes[k][0] = n_clients
         routes[k] = routes[k] + [n_clients]
     
-    print(routes)
+    print("DEBUG routes ", routes)
+    
+
     solution = {}
     for k in routes:
         solution[k-1] = routes[k]
-    print(solution)
+
+    print("DEBUG routes ", solution)
+    
 
     distances = compute_distances(distance_matrix, solution, num_vehicles)
+
+    print("DEBUG distances ", distances)
 
     return solution, distances
 
@@ -341,6 +353,8 @@ def solve_ilp_guroby(instance_data, timeout_time):
 
     # Create an environment with your WLS license
 
+    print("DEBUG: vehicles_capacity ", vehicles_capacity)
+
     env = get_gurobi_env()
     model = gb.Model(name="MCCVRP",env=env)
     x = model.addVars(NODES,NODES,COURIERS, vtype=gb.GRB.BINARY, name="x_ijk")
@@ -374,6 +388,7 @@ def solve_ilp_guroby(instance_data, timeout_time):
     for k in COURIERS:
         #the sum of the packages assigned to each courier must be less than the capacity of the vehicle
         model.addConstr(gb.quicksum(y[i,k]*packages_size[i-1] for i in CUSTOMERS)<=vehicles_capacity[k-1])
+
         #the main diagonal of x must be 0, since a customer can't be the predecessor of itself 
         model.addConstr(gb.quicksum(x[j,j,k] for j in NODES)==0)
         #each currier must go back to the depot
@@ -387,9 +402,9 @@ def solve_ilp_guroby(instance_data, timeout_time):
             model.addConstr(gb.quicksum(x[j,i,k] for j in NODES)==y[i,k])
 
 #Bho sembra stupido lol
-    for k in COURIERS:
-        for j in NODES:
-            model.addConstr(gb.quicksum(x[i,j,k] for i in NODES) == gb.quicksum(x[i,j,k] for i in NODES))
+#    for k in COURIERS:
+#        for j in NODES:
+#            model.addConstr(gb.quicksum(x[i,j,k] for i in NODES) == gb.quicksum(x[i,j,k] for i in NODES))
 
     #Subtour elimination using MTZ formulation
     for k in COURIERS:
@@ -399,10 +414,10 @@ def solve_ilp_guroby(instance_data, timeout_time):
                     model.addConstr(d[i, k] - d[j, k] + num_clients * x[i, j, k] <= num_clients - 1)
 
 #sembra ridondante, non si capisce dove prende la k
-    for i in CUSTOMERS:
-        for j in CUSTOMERS:
-            if i != j:
-                model.addConstr(d[i, k] - d[j , k] + num_clients * x[i, j, k] <= num_clients - 1)
+#    for i in CUSTOMERS:
+#        for j in CUSTOMERS:
+#            if i != j:
+#                model.addConstr(d[i, k] - d[j , k] + num_clients * x[i, j, k] <= num_clients - 1)
 
     # Set the time limit 
     time_limit = timeout_time - preprocessing_time
@@ -421,17 +436,23 @@ def solve_ilp_guroby(instance_data, timeout_time):
     print("RESULTS:")
     print("max distance: ", model.objVal)
 
+
     routes, distances = reconstruct_gurobi_solution(x, num_vehicles, distances, num_clients)
 
-    print("routes", routes)
-    print("distances", distances)
+    print("DEBUG routes ", routes)
+    print("DEBUG distances ", distances)
+    
+    #print(solution_to_string(routes, distances))
 
-    print(solution_to_string(routes, distances))
+    #print(routes)
 
-    print(routes)
+    #solution = list([sol for sol in routes.values()]) #THE ERROR IS HERE
+    #print("DEBUG solution ", solution)
 
+    solution = list([routes[i] for i in sorted(routes.keys())])
 
-    solution = list([sol for sol in routes.values()])
+    print("DEBUG solution ", solution)
+
     #for each element in the solution, convert it to a list and each element to an int
     solution = [list(map(int, sol)) for sol in solution]
     #delete the firt and last element for aeach list in the solution, in order to have only the clients
