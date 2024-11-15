@@ -1,4 +1,5 @@
 import os
+import math
 import numpy as np
 
 import time
@@ -414,6 +415,10 @@ def solve_ilp_guroby(instance_data, timeout_time):
     print("RESULTS:")
     print("max distance: ", model.objVal)
 
+    #Check if no solution was found
+    if model.objVal == math.inf:
+        return {"time": timeout_time, "optimal": False, "obj": 0, "sol": []}
+
 
     routes, distances = reconstruct_gurobi_solution(x, num_vehicles, distances, num_clients)
 
@@ -429,6 +434,7 @@ def solve_ilp_guroby(instance_data, timeout_time):
 
     sol_time = model.Runtime + preprocessing_time
     
+
     #since the solver dosn't stop exactly at the given second ensure the constraint sol_not_optimal -> time = 300
     if model.status != gb.GRB.OPTIMAL:
         sol_time = timeout_time
