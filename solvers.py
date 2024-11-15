@@ -316,8 +316,9 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
     print(f"Max distance reconstructed from sol: {max(distances)}")
     
     print("\n"+"*"*50+"\n")
-    solution = list([sol for sol in solution.values()])
-    
+    #solution = list([sol for sol in solution.values()])
+    solution = list([solution[i] for i in sorted(solution.keys())])
+
     #for each element in the solution, convert it to a list and each element to an int
     solution = [list(map(int, sol)) for sol in solution]
 
