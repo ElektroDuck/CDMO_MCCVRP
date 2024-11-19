@@ -81,7 +81,7 @@ The CP method can be runned with the following flags:
 - --method:  CP
 - --model: TODO INSERT MODELS 
 - --solver: TODO, insert solvers
-```
+
 
 ### SMT
 
