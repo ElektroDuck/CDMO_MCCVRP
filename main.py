@@ -100,14 +100,13 @@ def update_json_file(instance_n, method, model_name, result):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script that takes method, model, and instance as input.")
-    parser.add_argument('--method',     type=str,  required=True,  default="CP",      help='The method to use')
-    parser.add_argument('--model',      type=str,  required=False,  default="Model_A", help='The model to use')
-    parser.add_argument('--instance',   type=str,  required=False,  default="1",       help='The instances to solve')
-    parser.add_argument('--solver',     type=str,  required=False, default="gecode",  help='The solver to use')
-    parser.add_argument('--timeout',    type=int,  required=False, default=300,       help='The timeout expressed in seconds')
-    parser.add_argument('--int_res',    type=bool, required=False, default=False,     help='If true shows intermediate results. Buggy feature.')
-    parser.add_argument('--stat',       type=bool, required=False, default=False,     help='If true shows the statistics.')
-    parser.add_argument('--update_json',type=bool, required=False, default=False,     help='If true shows the statistics.')
+    parser.add_argument('--method',     type=str,  required=True,  default="",       help='The method to use')
+    parser.add_argument('--model',      type=str,  required=True,  default="",       help='The model to use')
+    parser.add_argument('--instance',   type=str,  required=True,  default="1",      help='The instances to solve')
+    parser.add_argument('--solver',     type=str,  required=False, default="gecode", help='The solver to use')
+    parser.add_argument('--timeout',    type=int,  required=False, default=300,      help='The timeout expressed in seconds')
+    parser.add_argument('--int_res',    type=bool, required=False, default=False,    help='If true shows intermediate results. Buggy feature.')
+    parser.add_argument('--update_json',type=bool, required=False, default=False,    help='If true shows the statistics.')
 
     args = parser.parse_args()
     model_name = args.model
