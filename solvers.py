@@ -1,6 +1,8 @@
 import os
 import math
+import json
 import numpy as np
+import subprocess
 
 import time
 from datetime import timedelta
@@ -90,8 +92,7 @@ def check_simmetry(d):
     return np.sum(dt==d) == (n*m)
 
 def solution_to_string(solution_dict, distances):
-    print("solution_dict", solution_dict)
-
+    
     string = ""
     for key, value in solution_dict.items():
         string += f"Vehicle {key+1} tour: (distance {distances[key]}) \n "
@@ -109,12 +110,9 @@ def compute_distances(distance_matrix, solution, num_vehicles):
 
     for i in range(start, end):
         total_distance = 0
-        print("currier ", i)
         for j in range(0, len(solution[i])-1):
-            print("from ", solution[i][j], "to ", solution[i][j+1])
             total_distance += distance_matrix[solution[i][j]][solution[i][j+1]]
         distance.append(total_distance)
-        print("total distance currier ", i , ": ", total_distance)
         print()
 
     return distance
@@ -440,3 +438,51 @@ def solve_ilp_guroby(instance_data, timeout_time):
         sol_time = timeout_time
 
     return {"time": sol_time, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": solution}
+
+def solve_smt(instance_data, timeout_time):
+    flag = False
+    try:
+        # Calling the SMT solver as a subprocess, so we can apply timeout
+        subprocess.call(["python3", "./SMT/smt_subprocess.py", str(instance_data)], timeout=timeout_time)
+    except subprocess.TimeoutExpired:
+        print("Solution TIMEOUT")
+        flag = True
+
+    # Saving results
+    try:
+        with open("tmp_output.json", "r") as f:
+            file = f.readlines()[0]
+        result_dict = json.loads(file)
+        if flag: 
+            result_dict["time"] = 300
+            result_dict["optimal"] = False
+        
+        sol = result_dict["sol"]
+        print_sol = [[instance_data['num_clients']] + sublist + [instance_data['num_clients']]  for sublist in sol]
+        
+        print_sol = {key: value for key, value in enumerate(print_sol)}
+
+        distances = compute_distances(instance_data["distances"], print_sol, instance_data["num_vehicles"])
+        print(solution_to_string(print_sol, distances))
+
+        for i in range(len(sol)):
+            sol[i] = [x+1 for x in sol[i]]
+    except:
+        result_dict = {
+            "time" : 300,
+            "optimal" : False,
+            "obj" : 0,
+            "sol" : []
+        }
+
+    #print results 
+    print("\n"+"*"*50+"\n")
+    print("Optimal solution: ", result_dict["optimal"])
+    print("Objective function value: ", result_dict["obj"])
+    print("Time: ", result_dict["time"])
+
+    if os.path.exists("tmp_output.json"):
+        os.remove("tmp_output.json")
+
+    return result_dict
+
