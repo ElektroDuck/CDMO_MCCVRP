@@ -61,13 +61,14 @@ Base command
 | Flag        | Default | Type | required | Description                                                  |   |   |   |   |   |
 |-------------|---------|------|----------|--------------------------------------------------------------|---|---|---|---|---|
 | method      | -       | str  | True     | The method to use (CP, SMT, MIP)                             |   |   |   |   |   |
-| model       | -       | str  | True     | The name of the model to use                                 |   |   |   |   |   |
-| instance    | 1       | str  | True     | The number of the instances to solve                         |   |   |   |   |   |
-| solver      | -       | str  | False    | The solver to use                                            |   |   |   |   |   |
+| model       | -       | str  | True     | The name of the model to use, the values depends on the used method, see below                                 |   |   |   |   |   |
+| instance    | 1       | str  | True     | The number of the instances to solve, can be a specific instance (e.g. --instance 1), solve in a range (e.g. --instance 1-10), solve all (e.g. --instance all)                         |   |   |   |   |   |
+| solver      | -       | str  | False    | The solver to use. The values depends on the method, see below                                            |   |   |   |   |   |
 | timeout     | 300     | int  | False    | Timeout time, expressed in seconds                           |   |   |   |   |   |
-| int_res     | False   | bool | False    | Show intermediate results, not available for all the systems |   |   |   |   |   |
+| int_res     | False   | bool | False    | Show intermediate results, not available for all the method and models |   |   |   |   |   |
 | update_json | False   | bool | False    | Update the solutions contained in the json file              |   |   |   |   |   |
 |             |         |      |          |                                                              |   |   |   |   |   |
 |             |         |      |          |                                                              |   |   |   |   |   |
+
 
 
