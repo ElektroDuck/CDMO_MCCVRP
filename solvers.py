@@ -205,9 +205,8 @@ def check_weights(packages_size, vehicles_capacity, solution):
     return sol
 
 def get_gurobi_env():
-    """LICENSE"""
-    # LICENSE FOR ACADEMIC VERSION OF GUROBI
-    # Create an environment with your WLS license
+    # This is my (Luca Tedeschini) personal Gurobi license
+    # Use it just to test our model only
     params = {
     "WLSACCESSID": '216dd889-fa22-449b-a888-e35218548ac7',
     "WLSSECRET": 'c4660e0b-df0a-49a3-b518-0791ddc21565',
@@ -340,82 +339,7 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
     #add one to each element in the solution to have the correct index
     solution = [[sol+1 for sol in s] for s in solution]
     
-    total_time = solver_time+preprocessing_time
-
-    #Since the solver dosn't stop exactly at the given second ensure the constraint sol_not_optimal -> time = timeout_time
-    if result.status is not Status.OPTIMAL_SOLUTION:
-        total_time = timeout_time
-
-    return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
-
-def solve_ilp_minizinc(model_name, solver_id, instance_data, timeout_time):
-    model_path = get_ilp_model_path(model_name)
-    
-    model = Model(model_path)
-    solver = Solver.lookup(solver_id)
-    instance = Instance(solver, model)
-
-    distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
-    #transform in numpy matrix
-    matrix_dist=np.array(distances) 
-    #compute upper and lower bound
-    start_time = time.time()
-    #low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
-    low_bound, up_bound, min_dist_bound = calculate_mccrp_bounds(matrix_dist) 
-    end_time = time.time()
-    preprocessing_time = end_time - start_time
-
-    instance["num_vehicles"] = num_vehicles
-    instance["num_clients"] = num_clients
-    instance["size"] = packages_size
-    instance["capacity"] = vehicles_capacity
-    instance["distances"] = distances
-
-    instance["low_bound"] = low_bound
-    instance["up_bound"] = up_bound
-    instance["min_dist_bound"] = min_dist_bound
-
-
-    timeout = timedelta(seconds=(timeout_time-preprocessing_time))
-    start_time = time.time()
-    result = instance.solve(timeout=timeout, random_seed=42)
-    end_time = time.time()
-
-    solver_time = end_time - start_time
-
-    print(f"\nFinished with state: {result.status} after {round(solver_time, 4)}s, preprocessing time: {round(preprocessing_time, 4)}s\n")
-    print("\nRESULTS:")
-    
-    if result.status is Status.UNKNOWN or result.status is Status.UNSATISFIABLE or result.status is Status.ERROR:
-        print("No solution found, exit status: ", result.status)  
-        return {"time": 300, "optimal": False, "obj": 0, "sol": []}
-
-
-    res = str(result.solution)
-
-    max_dist_compute = int(res.split("|")[0].replace("\"", ""))
-    succ_matrix = res.split("|")[1]
-
-    print(f"Max distance Compute: {max_dist_compute}")
-
-    solution = reconstruct_ilp_minizinc_solution(succ_matrix, num_vehicles, num_clients, matrix_dist)
-    vehicle_distances = compute_distances(distances, solution, num_vehicles)
-    print("Max distance (rec from sol): ", max(vehicle_distances))
-
-    print("routes: ")
-    print(solution_to_string(solution, vehicle_distances))
-
-    #solution = list([sol for sol in solution.values()])
-    solution = list([solution[i] for i in sorted(solution.keys())])
-
-    #for each element in the solution, convert it to a list and each element to an int
-    solution = [list(map(int, sol)) for sol in solution]
-
-    #delete the firt and last element for aeach list in the solution, in order to have only the clients
-    solution = [sol[1:-1] for sol in solution]
-
-    #add one to each element in the solution to have the correct index
-    solution = [[sol+1 for sol in s] for s in solution]
+    print(solution)
 
     total_time = solver_time+preprocessing_time
 
@@ -424,83 +348,97 @@ def solve_ilp_minizinc(model_name, solver_id, instance_data, timeout_time):
         total_time = timeout_time
 
     return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
-
 
 def solve_ilp_guroby(instance_data, timeout_time):
 
     distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
 
     #transform in numpy matrix
-    matrix_dist=np.array(distances) 
-    #compute upper and lower bound
+    matrix_dist=np.array(distances)
+
+    #Timer for preprocessing
     start_time = time.time()
+
     #low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
-    low_bound, up_bound, min_dist_bound = calculate_mccrp_bounds(matrix_dist) 
+    low_bound, up_bound, _ = calculate_mccrp_bounds(matrix_dist)
+
     end_time = time.time()
+
     preprocessing_time = end_time - start_time
 
-    CUSTOMERS = list(range(1,num_clients+1))
+    # Parameter definition
+    CLIENT = list(range(1,num_clients+1))
     NODES = list(range(0, num_clients+1)) 
-    COURIERS = list(range(1,num_vehicles+1))
+    VEHICLES = list(range(1,num_vehicles+1))
 
     # Create an environment with your WLS license
-
     env = get_gurobi_env()
     model = gb.Model(name="MCCVRP",env=env)
-    x = model.addVars(NODES,NODES,COURIERS, vtype=gb.GRB.BINARY, name="x_ijk")
-    y = model.addVars(NODES,COURIERS, vtype=gb.GRB.BINARY, name="y_ik")
-    d = model.addVars(CUSTOMERS, COURIERS, vtype=gb.GRB.CONTINUOUS, name="d_ik")
+
+    # Create model variables
+    x = model.addVars(NODES,NODES,VEHICLES, vtype=gb.GRB.BINARY, name="x_ijk")
+    y = model.addVars(NODES,VEHICLES, vtype=gb.GRB.BINARY, name="y_ik")
+    d = model.addVars(CLIENT, VEHICLES, vtype=gb.GRB.CONTINUOUS, name="d_ik")
     max_distance = model.addVar(name='max_distance')
     model.setObjective(max_distance, sense=gb.GRB.MINIMIZE)
-    
-    for k in COURIERS:
-        model.addConstr(gb.quicksum(x[i,j,k]*distances[i-1][j-1] for i in NODES for j in NODES) <= max_distance)
+
+
 
     # CONSTRAINTS
-    
-    #Upper e lower bound constraints
+    for k in VEHICLES:
+        # Updating the max_distance
+        model.addConstr(gb.quicksum(x[i,j,k]*distances[i-1][j-1] for i in NODES for j in NODES) <= max_distance)
+    # Upper e lower bound constraints
     model.addConstr(max_distance <= up_bound)
     model.addConstr(max_distance >= low_bound)
 
-    #all the curriers are used
-    model.addConstr(gb.quicksum(y[0,k] for k in COURIERS)==num_vehicles)
+    # Every vehicles is used
+    model.addConstr(gb.quicksum(y[0,k] for k in VEHICLES)==num_vehicles)
     
-    for i in CUSTOMERS:
-        #each item is assigned to only one courier
-        model.addConstr(gb.quicksum(y[i,k] for k in COURIERS)==1)
-        #starting from a node every customer must go to an another node
-        model.addConstr(gb.quicksum(x[i,j,k] for j in NODES for k in COURIERS)==1)
+    for i in CLIENT:
+        # Each item has only one vehicles assigned to it
+        model.addConstr(gb.quicksum(y[i,k] for k in VEHICLES)==1)
+        # You cannot stop on a node
+        model.addConstr(gb.quicksum(x[i,j,k] for j in NODES for k in VEHICLES)==1)
 
-    for j in CUSTOMERS:
-        #each customer has exactly one predecessor
-        model.addConstr(gb.quicksum(x[i,j,k] for i in NODES for k in COURIERS)==1)
+    for j in CLIENT:
+        # There must be a way to reach the node you are currently standing on
+        model.addConstr(gb.quicksum(x[i,j,k] for i in NODES for k in VEHICLES)==1)
 
-    for k in COURIERS:
-        #the sum of the packages assigned to each courier must be less than the capacity of the vehicle
-        model.addConstr(gb.quicksum(y[i,k]*packages_size[i-1] for i in CUSTOMERS)<=vehicles_capacity[k-1])
-
-        #the main diagonal of x must be 0, since a customer can't be the predecessor of itself 
+    for k in VEHICLES:
+        # Capacity constraint
+        model.addConstr(gb.quicksum(y[i,k]*packages_size[i-1] for i in CLIENT)<=vehicles_capacity[k-1])
+        # Diagonal = 0 (avoid loops)
         model.addConstr(gb.quicksum(x[j,j,k] for j in NODES)==0)
-        #each currier must go back to the depot
+        # Last point is the depot
         model.addConstr(gb.quicksum(x[i,0,k] for i in NODES)==1)
+    
 
-    for i in CUSTOMERS:
-        for k in COURIERS:
-            #if a currier is covering a route i to j, then the currier is also covering the route j to i
+    for i in CLIENT:
+        for k in VEHICLES:
+            # If a courier enters a node, then it must exit that node
             model.addConstr(gb.quicksum(x[i,j,k] for j in NODES)==gb.quicksum(x[j,i,k] for j in NODES))
-            #if a currier is covering a route i to j, then we assign the item to the vehicle in the decision variable y 
+            # If a courier is covering a client, we assign the item to it
             model.addConstr(gb.quicksum(x[j,i,k] for j in NODES)==y[i,k])
+    
 
-    #Subtour elimination using MTZ formulation
-    for k in COURIERS:
-        for i in CUSTOMERS:
-            for j in CUSTOMERS:
+    # Subtour elimination using MTZ formulation
+    for k in VEHICLES:
+        for i in CLIENT:
+            for j in CLIENT:
                 if i != j:
                     model.addConstr(d[i, k] - d[j, k] + num_clients * x[i, j, k] <= num_clients - 1)
 
     # Set the time limit 
     time_limit = timeout_time - preprocessing_time
     model.setParam(gb.GRB.Param.TimeLimit, time_limit)
+
+    # Set the model parameters
+    #model.setParam('Method', 2)
+    model.setParam('MIPFocus', 1)
+    model.setParam('ImproveStartTime', 200)
+    model.setParam('Presolve', 1)
+    model.setParam('Cuts', 1)
 
     start_time = time.time()
     model.optimize()
@@ -509,13 +447,13 @@ def solve_ilp_guroby(instance_data, timeout_time):
     
     print("SOLUTION FOUND ", model.objVal)
 
-        # Check the optimization status and retrieve the solution if available
+    # Check the optimization status and retrieve the solution if available
     print("#"*50)
     print(f"\nFinished with state: {model.status} after {round(solver_time, 4)}s, preprocessing time: {round(preprocessing_time, 4)}s")
     print("RESULTS:")
     print("max distance: ", model.objVal)
 
-    #Check if no solution was found
+    # Check if no solution was found
     if model.objVal == math.inf:
         return {"time": timeout_time, "optimal": False, "obj": 0, "sol": []}
 
@@ -525,17 +463,17 @@ def solve_ilp_guroby(instance_data, timeout_time):
     print(solution_to_string(routes, distances))
 
     solution = list([routes[i] for i in sorted(routes.keys())])
-    #for each element in the solution, convert it to a list and each element to an int
+    # Retrieve as a List the solution
     solution = [list(map(int, sol)) for sol in solution]
-    #delete the firt and last element for aeach list in the solution, in order to have only the clients
+    # Remove the depots from the solutions
     solution = [sol[1:-1] for sol in solution]
-    #add one to each element in the solution to have the correct index
+    # Re-index the solution to be compliant with the solution checker
     solution = [[sol+1 for sol in s] for s in solution]
 
     sol_time = model.Runtime + preprocessing_time
     
 
-    #since the solver dosn't stop exactly at the given second ensure the constraint sol_not_optimal -> time = 300
+    # Set the solution time to 300 if no optimal solution are found
     if model.status != gb.GRB.OPTIMAL:
         sol_time = timeout_time
 
