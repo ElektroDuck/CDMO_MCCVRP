@@ -13,12 +13,19 @@ for i in range(1,21):
 
     # Saving results
     if flag:
-        result_dict = {
-            "time" : 300,
-            "optimal" : False,
-            "obj" : 0,
-            "sol" : []
-        }
+        try:
+            with open("tmp_output.json", "r") as f:
+                file = f.readlines()[0]
+            result_dict = json.loads(file)
+            result_dict["time"] = 300
+            result_dict["optimal"] = False
+        except:
+            result_dict = {
+                "time" : 300,
+                "optimal" : False,
+                "obj" : 0,
+                "sol" : []
+            }
         with open(f"res/res_{i}.json","w") as f:
             json.dump(result_dict, f)
     else:
