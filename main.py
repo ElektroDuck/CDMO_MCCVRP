@@ -153,8 +153,6 @@ if __name__ == "__main__":
             result = solvers.solve_smt(instance, timeout_time)
 
         #result: "time": 300, "optimal": false, "obj": 12, "sol" : [[3, 6, 5], [4, 2], [7, 1]]
-        
-        print(type(result['sol']))
 
         if update_json:
             check_model_folder_exists(method)
