@@ -17,6 +17,10 @@ def get_cp_model_path(model_name):
     cp_model_path = os.path.join(BASE_PATH, "CP", "CP_Model", model_name)
     return cp_model_path
 
+def get_ilp_model_path(model_name):
+    ilp_model_path = os.path.join(BASE_PATH, "ILP", model_name)
+    return ilp_model_path
+
 def compute_bounds(distances, num_vehicles, num_clients):
     matrix_dist = np.array(distances) #transform in numpy matrix
     last_row = matrix_dist[-1, :]  # selects the last row
@@ -113,7 +117,6 @@ def compute_distances(distance_matrix, solution, num_vehicles):
         for j in range(0, len(solution[i])-1):
             total_distance += distance_matrix[solution[i][j]][solution[i][j+1]]
         distance.append(total_distance)
-        print()
 
     return distance
 
@@ -151,6 +154,31 @@ def reconstruct_cp_solution(succ_matrix, num_vehicles, num_clients, distance_mat
     distance = compute_distances(distance_matrix, solution, num_vehicles)
 
     return solution, distance
+
+def ilp_extract_route(succ_matrix, prev_idx, prev=[]):
+
+    #retrive index of the max element in the array at the position next_idx
+    next_idx = int(np.argmax(succ_matrix[prev_idx]))
+    if prev == []:
+        prev = [len(succ_matrix)-1]
+    elif prev_idx == len(succ_matrix)-1:
+        return prev
+    
+    prev.append(next_idx)
+
+    return ilp_extract_route(succ_matrix, next_idx, prev)
+
+def reconstruct_ilp_minizinc_solution(succ_matrix, num_vehicles, num_clients, distance_matrix):
+
+    succ_matrix = succ_matrix.replace("[", "").replace("]", "").replace(" ", "").replace("\"", "")
+    succ_matrix = np.array(succ_matrix.split(",")).reshape(num_clients+1, num_clients+1, num_vehicles)
+    succ_matrix = succ_matrix.astype(int)
+
+    solution = {}
+    for i in range(0, num_vehicles):
+        solution[i] = ilp_extract_route(succ_matrix[:,:,i], len(succ_matrix)-1)
+
+    return solution
 
 def check_weights(packages_size, vehicles_capacity, solution):
 
@@ -312,7 +340,82 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
     #add one to each element in the solution to have the correct index
     solution = [[sol+1 for sol in s] for s in solution]
     
-    print(solution)
+    total_time = solver_time+preprocessing_time
+
+    #Since the solver dosn't stop exactly at the given second ensure the constraint sol_not_optimal -> time = timeout_time
+    if result.status is not Status.OPTIMAL_SOLUTION:
+        total_time = timeout_time
+
+    return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
+
+def solve_ilp_minizinc(model_name, solver_id, instance_data, timeout_time):
+    model_path = get_ilp_model_path(model_name)
+    
+    model = Model(model_path)
+    solver = Solver.lookup(solver_id)
+    instance = Instance(solver, model)
+
+    distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
+    #transform in numpy matrix
+    matrix_dist=np.array(distances) 
+    #compute upper and lower bound
+    start_time = time.time()
+    #low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
+    low_bound, up_bound, min_dist_bound = calculate_mccrp_bounds(matrix_dist) 
+    end_time = time.time()
+    preprocessing_time = end_time - start_time
+
+    instance["num_vehicles"] = num_vehicles
+    instance["num_clients"] = num_clients
+    instance["size"] = packages_size
+    instance["capacity"] = vehicles_capacity
+    instance["distances"] = distances
+
+    instance["low_bound"] = low_bound
+    instance["up_bound"] = up_bound
+    instance["min_dist_bound"] = min_dist_bound
+
+
+    timeout = timedelta(seconds=(timeout_time-preprocessing_time))
+    start_time = time.time()
+    result = instance.solve(timeout=timeout, random_seed=42)
+    end_time = time.time()
+
+    solver_time = end_time - start_time
+
+    print(f"\nFinished with state: {result.status} after {round(solver_time, 4)}s, preprocessing time: {round(preprocessing_time, 4)}s\n")
+    print("\nRESULTS:")
+    
+    if result.status is Status.UNKNOWN or result.status is Status.UNSATISFIABLE or result.status is Status.ERROR:
+        print("No solution found, exit status: ", result.status)  
+        return {"time": 300, "optimal": False, "obj": 0, "sol": []}
+
+
+    res = str(result.solution)
+
+    max_dist_compute = int(res.split("|")[0].replace("\"", ""))
+    succ_matrix = res.split("|")[1]
+
+    print(f"Max distance Compute: {max_dist_compute}")
+
+    solution = reconstruct_ilp_minizinc_solution(succ_matrix, num_vehicles, num_clients, matrix_dist)
+    vehicle_distances = compute_distances(distances, solution, num_vehicles)
+    print("Max distance (rec from sol): ", max(vehicle_distances))
+
+    print("routes: ")
+    print(solution_to_string(solution, vehicle_distances))
+
+    #solution = list([sol for sol in solution.values()])
+    solution = list([solution[i] for i in sorted(solution.keys())])
+
+    #for each element in the solution, convert it to a list and each element to an int
+    solution = [list(map(int, sol)) for sol in solution]
+
+    #delete the firt and last element for aeach list in the solution, in order to have only the clients
+    solution = [sol[1:-1] for sol in solution]
+
+    #add one to each element in the solution to have the correct index
+    solution = [[sol+1 for sol in s] for s in solution]
 
     total_time = solver_time+preprocessing_time
 
@@ -321,6 +424,7 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
         total_time = timeout_time
 
     return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
+
 
 def solve_ilp_guroby(instance_data, timeout_time):
 
@@ -340,8 +444,6 @@ def solve_ilp_guroby(instance_data, timeout_time):
     COURIERS = list(range(1,num_vehicles+1))
 
     # Create an environment with your WLS license
-
-    print("DEBUG: vehicles_capacity ", vehicles_capacity)
 
     env = get_gurobi_env()
     model = gb.Model(name="MCCVRP",env=env)
@@ -438,6 +540,14 @@ def solve_ilp_guroby(instance_data, timeout_time):
         sol_time = timeout_time
 
     return {"time": sol_time, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": solution}
+
+def solve_ilp(instance_data, timeout_time, model, solver="gecode"):
+    if model == "gurobi":
+        return solve_ilp_guroby(instance_data, timeout_time)
+    elif model == "minizinc":
+        return solve_ilp_minizinc("ILP_model.mzn", solver, instance_data, timeout_time)
+    else:
+        raise ValueError("Specified MIP Model not recognized! \n Please choose between 'gurobi' and 'minizinc'")
 
 def solve_smt(instance_data, timeout_time):
     flag = False
