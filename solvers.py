@@ -338,8 +338,6 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
 
     #add one to each element in the solution to have the correct index
     solution = [[sol+1 for sol in s] for s in solution]
-    
-    print(solution)
 
     total_time = solver_time+preprocessing_time
 
