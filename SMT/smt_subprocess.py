@@ -13,8 +13,9 @@ start = time.time()
 parser = argparse.ArgumentParser()
 parser.add_argument("inst")
 args = parser.parse_args()
-inst = int(args.inst)
-instance = f"inst0{inst}.dat" if inst < 10 else f"inst{inst}.dat"
+
+instance_data = json.loads(str(args.inst).replace("'","\""))
+
 
 
 def create_result_dict(model, is_final):
@@ -78,21 +79,11 @@ def callback(tmp_model):
         json.dump(res_dict, f)
 
 
-
-
-# Opening the instance
-if os.path.exists("../Instances"):
-    with open("../Instances/"+instance, 'r') as file:
-        lines = file.readlines()
-    
-    num_vehicles = int(lines[0].strip())
-    num_clients = int(lines[1].strip())
-    
-    vehicles_capacity = list(map(int, lines[2].strip().split()))
-    packages_size = list(map(int, lines[3].strip().split()))
-
-    distances = [list(map(int, line.strip().split())) for line in lines[4:]]
-
+num_vehicles = instance_data["num_vehicles"]
+num_clients = instance_data["num_clients"]
+vehicles_capacity = instance_data["vehicles_capacity"]
+packages_size = instance_data["packages_size"]
+distances = instance_data["distances"]
 
 # parameter definition
 n = num_vehicles
@@ -103,7 +94,6 @@ lb = compute_lower_bound(distances, num_vehicles, num_clients)
 # Define decision variables
 paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(m+1)] for j in range(m+1)] for i in range(n)]
 num_visit = [Int(f"num_visit{i}") for i in range(m)]
-
 
 #  creating the solver
 solver = Optimize()
