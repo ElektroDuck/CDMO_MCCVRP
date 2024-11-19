@@ -51,3 +51,24 @@ from now on the terminal opens and we can execute commands inside the virtual ma
 Example: 
 ```python run_model.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1,3,4 --solver gecode --timeout 20```
 
+# How to run the code 
+
+Base command 
+
+```python main.py --method selected_method --model selected_model --instance number of the instance --solver selected_solver --timeout your_timeout --update_json True```
+
+## Flags
+| Flag        | Default | Type | required | Description                                                  |   |   |   |   |   |
+|-------------|---------|------|----------|--------------------------------------------------------------|---|---|---|---|---|
+| method      | -       | str  | True     | The method to use (CP, SMT, MIP)                             |   |   |   |   |   |
+| model       | -       | str  | True     | The name of the model to use, the values depends on the used method, see below                                 |   |   |   |   |   |
+| instance    | 1       | str  | True     | The number of the instances to solve, can be a specific instance (e.g. --instance 1), solve in a range (e.g. --instance 1-10), solve all (e.g. --instance all)                         |   |   |   |   |   |
+| solver      | -       | str  | False    | The solver to use. The values depends on the method, see below                                            |   |   |   |   |   |
+| timeout     | 300     | int  | False    | Timeout time, expressed in seconds                           |   |   |   |   |   |
+| int_res     | False   | bool | False    | Show intermediate results, not available for all the method and models |   |   |   |   |   |
+| update_json | False   | bool | False    | Update the solutions contained in the json file              |   |   |   |   |   |
+|             |         |      |          |                                                              |   |   |   |   |   |
+|             |         |      |          |                                                              |   |   |   |   |   |
+
+
+

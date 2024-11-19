@@ -180,30 +180,6 @@ def reconstruct_ilp_minizinc_solution(succ_matrix, num_vehicles, num_clients, di
 
     return solution
 
-def check_weights(packages_size, vehicles_capacity, solution):
-
-    loads = [sum([packages_size[i] for i in sol]) for sol in solution]
-
-    vc = vehicles_capacity.copy() 
-    sol = solution.copy() 
-    for _ in range(len(vehicles_capacity)): 
-        #take the index of the max element in the vehicles_capacity list
-        max_index = vc.index(max(vc))
-        #take the index of the max element in the loads list
-        max_load = loads.index(max(loads))
-        sol[max_index] = solution[max_load]
-        
-        print("loads", loads)
-        print("max_load", max_load)
-        print("vc", vc)
-        print("max_index", max_index)
-
-        #put the max load to 0 in order to avoid to take it again
-        loads[max_load] = 0
-        vc[max_index] = 0
-
-    return sol
-
 def get_gurobi_env():
     # This is my (Luca Tedeschini) personal Gurobi license
     # Use it just to test our model only
@@ -338,8 +314,6 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
 
     #add one to each element in the solution to have the correct index
     solution = [[sol+1 for sol in s] for s in solution]
-    
-    print(solution)
 
     total_time = solver_time+preprocessing_time
 
