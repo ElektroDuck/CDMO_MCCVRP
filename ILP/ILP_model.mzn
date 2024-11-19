@@ -6,7 +6,6 @@ int: up_bound;
 array[1..num_vehicles] of int: capacity;
 array[1..num_clients] of int: size;
 array[1..num_clients+1, 1..num_clients+1] of int: distances;                         
-
 array[1..num_clients+1, 1..num_clients+1, 1..num_vehicles] of var 0..1: x;
 array[1..num_clients+1, 1..num_vehicles] of var 0..1: y;
 array[1..num_clients, 1..num_vehicles] of var 1..num_clients: u;
@@ -18,7 +17,7 @@ constraint max_distance >= low_bound;
 constraint max_distance <= up_bound;
 
 
-% Each item solo ad un corriere
+% Each item is assigned to a courier
 constraint (
   forall (i in 1..num_clients) (
     sum(k in 1..num_vehicles)(y[i,k]) == 1
@@ -26,13 +25,13 @@ constraint (
 );
 
 
-% Ogni corriere è attivo (parte da un deposito) (non l'ho capito)
+% Each courier starts from a depot
 
 constraint (
   sum(k in 1..num_vehicles)(y[num_clients+1, k]) = num_vehicles
 );
 
-% Ogni corriere rispetta capacità massima
+% Capacity constraint
 
 constraint (
   forall(k in 1..num_vehicles) (
@@ -40,14 +39,16 @@ constraint (
   )
 );
 
-% unicità dei travel dei corrieri
+% Unique path for each courier
+
 constraint (
   forall (i in 1..num_clients, k in 1..num_vehicles) (
     sum(j in 1..num_clients+1)(x[i,j,k]) == sum(j in 1..num_clients+1)(x[j,i,k])
   )
 );
 
-% Channelling tra x ed y
+% Channelling constraint
+
 constraint (
   forall (i in 1..num_clients, k in 1..num_vehicles) (
     sum(j in 1..num_clients+1)(x[j,i,k]) == y[i,k]
@@ -55,35 +56,39 @@ constraint (
  );
 
 
-% Diagonal = 0
+% Diagonal = 0 (no loop)
+
 constraint (
   forall (k in 1..num_vehicles) (
     sum(j in 1..num_clients+1) (x[j,j,k]) == 0
   )
 );
 
-% Partendo da un nodo, ogni altro corriere deve andare in un altro (???)
+% Each courier must start from a node that it has reached
+
 constraint (
   forall (j in 1..num_clients) (
     sum(i in 1..num_clients+1, k in 1..num_vehicles) (x[i,j,k]) == 1
   )
 );
 
-% Ogni corriere torna al depot
+% Each courier goes back into the depot
+
 constraint (
   forall (k in 1..num_vehicles) (
     sum(i in 1..num_clients+1) (x[i,num_clients+1,k]) == 1
   )
 );
 
-% Per ogni cliente j, ci deve essere solo un veicolo k che va da j ad i
+% For every client, there must be a courier that reach it
+
 constraint (
   forall (j in 1..num_clients) (
     sum (i in 1..num_clients+1, k in 1..num_vehicles) (x[i,j,k]) == 1
   )
 );
 
-% Per ogni cliente j, ci deve essere slo un veicolo k che da i va a j
+% For every client, there must be a courier that reach it
 
 constraint (
   forall (i in 1..num_clients) (
@@ -91,8 +96,7 @@ constraint (
   )
 );
 
-% Se un veicolo k visita j, lo stesso veicolo dovrebbe andare da j in un'altra location.
-% Il numero di corrieri che entra in un nodo deve essere uguale al numero che esce
+% the number of courier that enters a node must be equal to the number of courier thate exit the node
 
 constraint (
   forall (k in 1..num_vehicles, j in 1..num_clients+1)(
@@ -100,14 +104,14 @@ constraint (
   )
 );
 
-%MTZ formulation
+% MTZ formulation
 constraint (
   forall (i in 1..num_clients, j in 1..num_clients, k in 1..num_vehicles where i != j) (
     u[i,k] - u[j,k] + num_clients * x[i,j,k] <= num_clients - 1
   )
 );
 
-% Vincolo per calcolare la distanza totale per ogni veicolo e legarla a max_distance
+% Objective function
 constraint (
   forall (k in 1..num_vehicles) (
     sum(i in 1..num_clients+1, j in 1..num_clients+1) (x[i, j, k] * distances[i, j]) <= max_distance

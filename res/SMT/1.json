@@ -1,13 +1,13 @@
 {
-    "TEST": {
+    "SMT": {
         "time": 0,
         "optimal": true,
         "obj": 14,
         "sol": [
             [
-                1,
+                4,
                 3,
-                4
+                1
             ],
             [
                 2,
