@@ -1,7 +1,5 @@
 int: num_vehicles;
 int: num_clients;
-int: low_bound;
-int: up_bound;
 
 array[1..num_vehicles] of int: capacity;
 array[1..num_clients] of int: size;
@@ -13,8 +11,6 @@ array[1..num_clients, 1..num_vehicles] of var 1..num_clients: u;
 var int: max_distance;
 
 % Bound the min and max distance
-constraint max_distance >= low_bound;
-constraint max_distance <= up_bound;
 
 
 % Each item is assigned to a courier
