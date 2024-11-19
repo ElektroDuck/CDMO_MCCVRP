@@ -51,3 +51,23 @@ from now on the terminal opens and we can execute commands inside the virtual ma
 Example: 
 ```python run_model.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1,3,4 --solver gecode --timeout 20```
 
+# How to run the code 
+
+Base command 
+
+```python main.py --method selected_method --model selected_model --instance number of the instance --solver selected_solver --timeout your_timeout --update_json True```
+
+## Flags
+| Flag        | Default | Type | required | Description                                                  |   |   |   |   |   |
+|-------------|---------|------|----------|--------------------------------------------------------------|---|---|---|---|---|
+| method      | -       | str  | True     | The method to use (CP, SMT, MIP)                             |   |   |   |   |   |
+| model       | -       | str  | True     | The name of the model to use                                 |   |   |   |   |   |
+| instance    | 1       | str  | True     | The number of the instances to solve                         |   |   |   |   |   |
+| solver      | -       | str  | False    | The solver to use                                            |   |   |   |   |   |
+| timeout     | 300     | int  | False    | Timeout time, expressed in seconds                           |   |   |   |   |   |
+| int_res     | False   | bool | False    | Show intermediate results, not available for all the systems |   |   |   |   |   |
+| update_json | False   | bool | False    | Update the solutions contained in the json file              |   |   |   |   |   |
+|             |         |      |          |                                                              |   |   |   |   |   |
+|             |         |      |          |                                                              |   |   |   |   |   |
+
+
