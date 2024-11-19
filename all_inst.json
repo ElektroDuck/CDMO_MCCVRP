@@ -1,0 +1,23 @@
+{
+    "MIP" : {
+        "Models" : {
+            "gurobi" : [],
+            "minizinc" : [
+                "gecode"
+            ]
+        }
+    },
+    "CP" : {
+        "Models" : {
+            "Model_A_gc_corrected_changedoutput.mzn" : [
+                "gecode"
+            ]
+        }
+    },
+    "SMT" : {
+        "Models" : {
+            "SMT" : []
+        }
+    },
+    "instances" : "1-21"
+}
