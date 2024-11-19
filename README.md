@@ -51,9 +51,18 @@ from now on the terminal opens and we can execute commands inside the virtual ma
 Example: 
 ```python run_model.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1,3,4 --solver gecode --timeout 20```
 
-# How to run the python code 
+# How to run all the instances 
+To run all the models in all the different configurations: 
 
-Example: Base command 
+```
+python3 run_all_instances.py 
+```
+
+This script excecute all the model described in the report, producing the result in .json format that are available in the `res/` folder
+The configuration is loaded from the file `all_inst.json`. It is possible to modify this file in order to devine new custome executions.  
+
+# How to run the python code
+Example of base command 
 
 ```
 python main.py --method selected_method --model selected_model --instance number of the instance --solver selected_solver --timeout your_timeout --update_json True
@@ -70,7 +79,9 @@ python main.py --method selected_method --model selected_model --instance number
 | int_res     | False   | bool | False    | Show intermediate results, not available for all the method and models |  
 | update_json | False   | bool | False    | Update the solutions contained in the json file |   
 
-## Mothods 
+## Methods 
+
+The explanation of the implemented models can be founf in the file `report.pdf`
 
 ### CP
 ```
@@ -84,6 +95,7 @@ The CP method can be runned with the following flags:
 
 
 ### SMT
+The SMT has been implemented through the z3 solver. The code can be run as: 
 
 ```
 python main.py --method SMT --model z3_solver --instance all --timeout 300 --update_json True
