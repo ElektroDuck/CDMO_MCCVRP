@@ -115,7 +115,6 @@ if __name__ == "__main__":
     timeout_time = args.timeout
     instances = define_instances_num(args.instance)
     int_res = args.int_res
-    show_stat = args.stat
     update_json = args.update_json
     
     print_configuration(instances, args.model, args.method)
