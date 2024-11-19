@@ -349,6 +349,83 @@ def solve_cp(model_name, solver_id, instance_data, timeout_time):
 
     return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
 
+def solve_ilp_minizinc(model_name, solver_id, instance_data, timeout_time):
+    model_path = get_ilp_model_path(model_name)
+    
+    model = Model(model_path)
+    solver = Solver.lookup(solver_id)
+    instance = Instance(solver, model)
+
+    distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
+    #transform in numpy matrix
+    matrix_dist=np.array(distances) 
+    #compute upper and lower bound
+    start_time = time.time()
+    #low_bound, min_dist_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
+    low_bound, up_bound, min_dist_bound = calculate_mccrp_bounds(matrix_dist) 
+    end_time = time.time()
+    preprocessing_time = end_time - start_time
+
+    instance["num_vehicles"] = num_vehicles
+    instance["num_clients"] = num_clients
+    instance["size"] = packages_size
+    instance["capacity"] = vehicles_capacity
+    instance["distances"] = distances
+
+    instance["low_bound"] = low_bound
+    instance["up_bound"] = up_bound
+    instance["min_dist_bound"] = min_dist_bound
+
+
+    timeout = timedelta(seconds=(timeout_time-preprocessing_time))
+    start_time = time.time()
+    result = instance.solve(timeout=timeout, random_seed=42)
+    end_time = time.time()
+
+    solver_time = end_time - start_time
+
+    print(f"\nFinished with state: {result.status} after {round(solver_time, 4)}s, preprocessing time: {round(preprocessing_time, 4)}s\n")
+    print("\nRESULTS:")
+    
+    if result.status is Status.UNKNOWN or result.status is Status.UNSATISFIABLE or result.status is Status.ERROR:
+        print("No solution found, exit status: ", result.status)  
+        return {"time": 300, "optimal": False, "obj": 0, "sol": []}
+
+
+    res = str(result.solution)
+
+    max_dist_compute = int(res.split("|")[0].replace("\"", ""))
+    succ_matrix = res.split("|")[1]
+
+    print(f"Max distance Compute: {max_dist_compute}")
+
+    solution = reconstruct_ilp_minizinc_solution(succ_matrix, num_vehicles, num_clients, matrix_dist)
+    vehicle_distances = compute_distances(distances, solution, num_vehicles)
+    print("Max distance (rec from sol): ", max(vehicle_distances))
+
+    print("routes: ")
+    print(solution_to_string(solution, vehicle_distances))
+
+    #solution = list([sol for sol in solution.values()])
+    solution = list([solution[i] for i in sorted(solution.keys())])
+
+    #for each element in the solution, convert it to a list and each element to an int
+    solution = [list(map(int, sol)) for sol in solution]
+
+    #delete the firt and last element for aeach list in the solution, in order to have only the clients
+    solution = [sol[1:-1] for sol in solution]
+
+    #add one to each element in the solution to have the correct index
+    solution = [[sol+1 for sol in s] for s in solution]
+
+    total_time = solver_time+preprocessing_time
+
+    #Since the solver dosn't stop exactly at the given second ensure the constraint sol_not_optimal -> time = timeout_time
+    if result.status is not Status.OPTIMAL_SOLUTION:
+        total_time = timeout_time
+
+    return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
+
 def solve_ilp_guroby(instance_data, timeout_time):
 
     distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
