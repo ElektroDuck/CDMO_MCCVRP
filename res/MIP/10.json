@@ -38,5 +38,11 @@
                 11
             ]
         ]
+    },
+    "minizinc": {
+        "time": 300,
+        "optimal": false,
+        "obj": 0,
+        "sol": []
     }
 }
