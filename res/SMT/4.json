@@ -1,6 +1,6 @@
 {
-    "TEST": {
-        "time": 1,
+    "SMT": {
+        "time": 0,
         "optimal": true,
         "obj": 220,
         "sol": [
