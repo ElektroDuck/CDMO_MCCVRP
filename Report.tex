@@ -1,5 +1,6 @@
 \documentclass{article}
 \usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
 
 \title{CDMO - report paper}
 \author{Luca Babboni, Gabriele Nanni, Luca Tedeschini}
@@ -11,16 +12,48 @@
 
 
 \section{Introduction}
-The mTSP (multiple Travel Salesperson Problem) with the objective of minimizing the longest tour length is a slight variation of the well-known TSP problem. Formally, the TSP is defined by a directed graph with costs, and the goal of the problem is to find the shortest path that goes through all the nodes: the idea is that a salesperson needs to visit all the clients in the shortest amount of time. The mTSP is a relaxation of the TSP where multiple salespeople are allowed, and in this study, the graph is fully connected.
+The Multiple Traveling Salesperson Problem (mTSP) is a well-known generalization of the Traveling Salesperson Problem (TSP), in which more than one salesperson is allowed. The mTSP can be formalized as follows: given \( m \) couriers that must distribute \( n \geq m \) items to different distribution points \( j \), the goal is to minimize the maximum distance covered by the couriers. Additionally, each courier \( i \) has a maximum load capacity \( l_i \), and each item \( j \) has a designated distribution point \( j \) and a size \( s_j \). Every client must be served, and each courier must be able to transport its assigned load in a single trip.  
+
+The input data for each instance includes these parameters along with a distance matrix \( D_{j \times j} \).  
+% Expand on SMT and MIP here, and include SAT and CP.
+
+To tackle the problem, we chose to represent it as a \( 3D \) Boolean tensor: each vertical slice \( j \times j \) of the structure corresponds to a single courier. This Boolean matrix can take values of \( 0 \) or \( 1 \). A value of \( 1 \) at position \( (x, y) \) indicates that the courier is traveling from \( x \) to \( y \); a \( 0 \) indicates otherwise. Stacking multiple slices on top of each other simplifies the formulation of many constraints. This representation is also commonly used in the literature (cite the reference).  
+% Add citation link here for clarity. https://file.notion.so/f/f/760b9757-9f98-4afb-a60c-a4c1541e0fe4/7f309437-9dca-40e5-9f4f-2570c4f8a295/CNF_Encodings_for_the_Min-Max_Multiple_Traveling_Salesmen_Problem.pdf?table=block&id=11633252-6828-8063-b709-c1a22238a651&spaceId=760b9757-9f98-4afb-a60c-a4c1541e0fe4&expirationTimestamp=1732665600000&signature=9vVi8nt7eIywry1zFy4L8kFSv2xcAixLbgdGOdibbZc&downloadName=CNF_Encodings_for_the_Min-Max_Multiple_Traveling_Salesmen_Problem.pdf
+
+This representation proved particularly useful in the SMT and MIP formulations, as it allowed many constraints to be expressed concisely. Another common strategy employed across all our formulations was the computation of upper and lower bounds (cite the reference).  
+% Add citation link here for upper and lower bounds. https://www.savemyexams.com/a-level/further-maths_decision-maths-1/edexcel/17/revision-notes/algorithms-on-graphs/the-travelling-salesman-problem/upper-and-lower-bounds-for-the-travelling-salesman-problem/
+
+This approach enabled us to achieve optimality in instances that were previously suboptimal, significantly boosting performance.
+
+%--- Chat GPT ha corretto fino a qua, da sotto far controllare grammatica
+We all worked together most of the time, but each one of us specialized in one or more field: Gabriele Nanni worked mainly on the CP and SAT encoding, Luca Babboni worked mainly on the CP and MIP encoding and Luca Tedeschini worked mainly on the SMT and MIP. The software structure was mainly maintained by Luca Babboni, but everyone worked on it.
+
 
 \section{CP Model}
 \subsection{Decision variables}
 \subsection{Constraints}
 \subsection{Validation}
 \section{SMT model}
+%Chiedere a chatgpt che theory usiamo che mi ha risposto ma non so cosa siano al momento, i'm just a Chill guy who doesn't know theory
+The SMT model is totally based on the $3D$ tensor representation. We decided to implement it using the python library Z3py, based on the Z3 solver. We got mixed results because the model struggle to solve instance 7 while it is quite efficient on the other mandatory instances. It is not able so solve any instance above the tenth.  
 \subsection{Decision variables}
+These are our decision variables:
+\begin{description}
+	\item[$\bullet$ $n$] the number of vehicles
+	\item[$\bullet$ $m$] the number of clients
+	\item[$\bullet$ $ub$] the upperbound of the objective function
+	\item[$\bullet$ $lb$] the lowebound of the objective function
+	\item[$\bullet$ $paths_{i,j,k}$] the tensor representation where the matrix $(i \times j)$ represents the trip of one courrier, and the added dimensions $k=n$ are stacked to form the complete data structure
+	\item[$\bullet$ $num_{visit}$] MZN subtour %spiegare cos'è
+	\item[$\bullet$ $max_{dist}$] the maximum distance travelled by the couriers
+\end{description}
 \subsection{Objective function}
+The objective function is defined as %This è sospetto, perché nel codice SMT usa indici diversi che però non hanno senso
+\begin{align*}
+	\sum_{i=1}^m \sum_{j=1}^m \text{paths}_{i,j,k} \cdot \text{distances}_{i,j} \le max_{dist} \quad & \text{for all } k \in 1 \ldots n
+\end{align*}
 \subsection{Constraints}
+Here's the list of constraints we have used to build our model
 \subsection{Validation}
 \section{MIP Model}
 \subsection{Decision variables}
