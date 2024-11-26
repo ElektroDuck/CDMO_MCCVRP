@@ -44,22 +44,88 @@ These are our decision variables:
 	\item[$\bullet$ $ub$] the upperbound of the objective function
 	\item[$\bullet$ $lb$] the lowebound of the objective function
 	\item[$\bullet$ $paths_{i,j,k}$] the tensor representation where the matrix $(i \times j)$ represents the trip of one courrier, and the added dimensions $k=n$ are stacked to form the complete data structure
-	\item[$\bullet$ $num_{visit}$] MZN subtour %spiegare cos'è
-	\item[$\bullet$ $max_{dist}$] the maximum distance travelled by the couriers
+	\item[$\bullet$ $numvisit_i$] MZN subtour %spiegare cos'è
+	\item[$\bullet$ $maxdist$] the maximum distance travelled by the couriers
 \end{description}
 \subsection{Objective function}
 The objective function is defined as %This è sospetto, perché nel codice SMT usa indici diversi che però non hanno senso
 \begin{align*}
-	\sum_{i=1}^m \sum_{j=1}^m \text{paths}_{i,j,k} \cdot \text{distances}_{i,j} \le max_{dist} \quad & \text{for all } k \in 1 \ldots n
-\end{align*}
+	\sum_{i=1}^m \sum_{j=1}^m \text{paths}_{i,j,k} \cdot \text{distances}_{i,j} \le maxdist \quad & \text{for all } k \in 1 \ldots n \\
+	\min({maxdist})
+\end{align*} 
 \subsection{Constraints}
 Here's the list of constraints we have used to build our model
+
+\begin{align}
+	0 \le numvisit_i \le m-1 \quad & \forall i \in 1 \ldots n \label{eq:1} \\
+	\sum_{j=0}^{m+1}{paths_{i,j,k}} = 1 \implies \sum_{j=0}^{m+1}{paths_{i,k,j} = 1} \quad & \forall k \in 1 \ldots m, \forall i \in \ \ldots n \label{eq:2} \\
+	\sum_{i=0}^{n}\sum_{j=0}^{m+1}{paths_{i,j,k}} = 1 \land \sum_{i=0}^{n}\sum_{j=0}^{m+1}{paths_{i,k,j}} = 1 \quad & \forall k \in 1 \ldots m \label{eq:3} \\
+	paths_{i,j,k} \implies numvisit_j < numvisit_k \quad & \forall k,j \in 1 \ldots m, \forall i \in 1 \ldots n \label{eq:4} \\
+	\sum_{k = 0}^{m}\sum_{j=0}^{m+1}{paths_{i,j,k} * package_k} \le vehiclescap_i \quad & \forall i \in 1 \ldots n \label{eq:5}\\
+	\sum_{j=0}^{m+1}\sum_{i=0}^{n}{paths_{i,j,j}} = 0 \label{eq:6}\\
+	\sum_{k=0}^{m}{paths_{i,m,k}} = 1 \land \sum_{j=0}^{m}{pahts_{i,j,m}} = 1 \quad & \forall i \in 1 \ldots n \label{eq:7} \\
+	lb \le maxdist \le ub \label{eq:8}\\
+	\begin{aligned}
+		\forall i_1, i_2 \in \{1 \ldots n\}, & \quad i_1 < i_2 \land vehiclescap_{i_1} = vehiclescap_{i_2} \implies \\
+		& (\forall j, k \in \{1 \ldots m\}, paths_{i_1,m,j} \land paths_{i_2, m,k} \land j < k) 
+	\end{aligned} \label{eq:9}
+\end{align}
+\begin{itemize}
+	\item (\ref{eq:1}): Questo vincolo assicura che il numero di visite \(numvisit_i\) di ciascun nodo \(i\) sia compreso tra 0 e \(m-1\), rispettando il dominio valido per le visite.
+	\item (\ref{eq:2}): Questo vincolo garantisce che ogni nodo visitato abbia una connessione valida in ingresso e in uscita, rappresentando un circuito chiuso per ciascun veicolo.
+	\item (\ref{eq:3}): Questo vincolo stabilisce che ciascun nodo intermedio venga visitato esattamente una volta in ingresso e una volta in uscita da tutti i veicoli combinati.
+	\item (\ref{eq:4}): Questo vincolo impone che, se un arco collega \(j\) e \(k\), il nodo \(j\) deve essere visitato prima del nodo \(k\).
+	\item (\ref{eq:5}): Questo vincolo limita il carico trasportato da ciascun veicolo in modo che non superi la capacità \(vehiclescap_i\).
+	\item (\ref{eq:6}): Questo vincolo elimina i cicli autoconnessi, impedendo che un nodo abbia un arco verso sé stesso.
+	\item (\ref{eq:7}): Questo vincolo stabilisce che ogni veicolo inizi e termini il proprio percorso nel deposito \(m\).
+	\item (\ref{eq:8}): Questo vincolo impone che la distanza massima percorsa dai veicoli sia compresa tra i limiti inferiori (\(lb\)) e superiori (\(ub\)).
+	\item (\ref{eq:9}): Questo vincolo di rottura della simmetria impedisce ridondanze tra veicoli con capacità uguali, imponendo un ordinamento tra le visite iniziali di tali veicoli.
+\end{itemize}
+
 \subsection{Validation}
+Mettere i risultati in formato tabellare, ma prima controllare che gli indici abbiano senso perché nel modello su python sembra ci sia roba a caso che se cambi però funziona, sospetto. Una volta poi capiti si può completare la sezione sopra
 \section{MIP Model}
+This model is quite similar to the previous one, but thanks to the better performance of the gurobi solver we were able to find optimality in instances above the tenth.
 \subsection{Decision variables}
+These were our decision variables:
+\begin{description}
+	\item[$\bullet$ $ub$] the upperbound of the objective function
+	\item[$\bullet$ $lb$] the lowebound of the objective function
+	\item[$\bullet$ $x_{i,j,k}$] the boolean tensor representation of the problem
+	\item[$\bullet$ $y_{i,k}$] a boolean matrix representing if courier k is delivering at node i
+	\item[$\bullet$ $d_{i,k}$] a continuous matrix used for the subtour elimination with the MZN formulation % ancora da spiegare che è
+	\item[$\bullet$ $maxdist$] the variable to minimize
+	\item[$\bullet$ $NODES$] the number of nodes (considering the depot)
+	\item[$\bullet$ $CLIENT$] the number of nodes (not considering the depot)
+	\item[$\bullet$ $VEHICLES$] the number of couriers
+\end{description}
 \subsection{Objective function}
+The objective function is the following
+
+\begin{align*}
+	\sum_{i = 0}^{NODES}\sum_{j=0}^{NODES} distances_{i-1,j-1} * x_{i,j,k} \le maxdist \quad & \forall k \in 1 \ldots VEHICLES \\
+	\min(maxdist)
+\end{align*} 
 \subsection{Constraints}
+As said before, the constraints are very similar to the SMT formulation:
+\begin{align}
+	lb \le maxdist \le ub \label{eq:10} \\
+	\sum_{k=1}^{VEHICLES}y_{0,k} = |VEHICLES|\\
+	\sum_{k=1}^{VEHICLES}y_{i,k} = 1 \quad & \forall i \in CLIENTS \\
+	\sum_{j=0}^{NODES}\sum_{k=1}^{VEHICLES} = 1\ \quad & \forall i \in CLIENTS \\
+	\sum_{i=0}^{NODES}\sum_{k=1}^{VEHICLES}x_{i,j,k} = 1 \quad & \forall j \in CLIENTS \\
+	\sum_{i=1}^{CLIENTS} y_{i,k}*packagesize_{i-1} \le vehiclescap_{k-1} \quad & \forall k \in VEHICLES \\
+	\sum_{j=0}^{NODES} x_{j,j,k} \quad & \forall k \in VEHICLES \\
+	\sum_{i=0}^{NODES} x_{i,0,k} \quad & \forall k \in VEHICLES \\
+	\sum_{j=0'}^{NODES} x_{i,j,k} = \sum_{j = 0}^{NODES} x_{j,i,k} \quad & \forall i \in CLIENTS, \forall k \in VEHICLES \\
+	\sum_{j=0}^{NODES}x_{j,i,k} = y_{i,k} \quad & \forall k \in VEHICLES, \forall i \in CLIENTS \\
+	\begin{aligned}
+	\forall k \in VEHICLES, \forall i,j \in CLIENTS, i \ne j,\\ d_{i,k} - d_{j,k} + |CLIENTS| * x_{i,j,k} \le |CLIENTS| -1
+	\end{aligned}
+\end{align}
+Spiegazione come sopra
 \subsection{Validation}
+Mettere risultati come sopra
 \section{Conclusion}
 
 
