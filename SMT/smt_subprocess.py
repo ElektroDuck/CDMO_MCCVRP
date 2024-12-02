@@ -14,8 +14,25 @@ parser = argparse.ArgumentParser()
 parser.add_argument("inst")
 args = parser.parse_args()
 
-instance_data = json.loads(str(args.inst).replace("'","\""))
+# Get the instance to read
+instance_number = int(args.inst)
 
+#Read the instance utility function
+def extract_data_from_dat(instance_number):
+    instance_number = str(instance_number) if instance_number >= 10 else "0"+str(instance_number)
+    instance_path = f"{os.getcwd()}/Instances/inst{instance_number}.dat"
+    with open(instance_path, 'r') as file:
+        lines = file.readlines()
+    
+    num_vehicles = int(lines[0].strip())
+    num_clients = int(lines[1].strip())
+    
+    vehicles_capacity = list(map(int, lines[2].strip().split()))
+    packages_size = list(map(int, lines[3].strip().split()))
+
+    distances = [list(map(int, line.strip().split())) for line in lines[4:]]
+
+    return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
 
 
 def create_result_dict(model, is_final):
@@ -78,12 +95,8 @@ def callback(tmp_model):
     with open("tmp_output.json", "w") as f:
         json.dump(res_dict, f)
 
-
-num_vehicles = instance_data["num_vehicles"]
-num_clients = instance_data["num_clients"]
-vehicles_capacity = instance_data["vehicles_capacity"]
-packages_size = instance_data["packages_size"]
-distances = instance_data["distances"]
+# Read the instance
+num_vehicles, num_clients, vehicles_capacity, packages_size, distances = extract_data_from_dat(instance_number)
 
 # parameter definition
 n = num_vehicles
@@ -92,7 +105,6 @@ ub = compute_upper_bound(distances)
 lb = compute_lower_bound(distances, num_vehicles, num_clients)
 
 # Define decision variables
-#paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(m+1)] for j in range(m+1)] for i in range(n)] #OLD
 paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(n)] for j in range(m+1)] for i in range(m+1)]
 num_visit = [Int(f"num_visit{i}") for i in range(m)]
 
@@ -103,22 +115,23 @@ solver.set_on_model(callback)
 
 # Adding constraints
 
-# Constraints on decision variables domains
+
+# Constraint I: limit on decision variables domains
 for i in range(m):
     solver.add(And(num_visit[i] >= 0, num_visit[i] <= m-1))
 
-# Constraint I: Da capire che cazzo è
-for k in range(n):
-    for j in range(m):
-        solver.add(Implies(Sum([paths[i][j][k] for i in range(m+1)]) == 1, Sum([paths[j][i][k] for i in range(m+1)]) == 1))
 
-# Constraint II: Each destination is reached by a courier departing from a sound origin (plus, each client is visited by only one courier)
+
 for j in range(m):
-    solver.add(And(Sum([paths[i][j][k] for i in range(m+1) for k in range(n)]) == 1,
-                   Sum([paths[j][i][k] for i in range(m+1) for k in range(n)]) == 1))
+    for k in range(n):
+        # Constraint II: Coherence (If i reach a client, i then must depart from that client)
+        solver.add(Sum([paths[i][j][k] for i in range(m+1)]) == Sum([paths[j][i][k] for i in range(m+1)]))
+    # Constraint III: A client is served by only one courier
+    solver.add(Sum([paths[i][j][k] for i in range(m+1) for k in range(n)]) == 1)
 
 
-# Constraint III: Subtour constraint
+
+# Constraint IV: Subtour constraint
 for k in range(n):
     for i in range(m):
         for j in range(m):
@@ -126,34 +139,26 @@ for k in range(n):
 
 
 
-# Define the objective function and apply upper and lower bounds
 max_dist = Int("max_dist")
-solver.add(max_dist <= ub)
-solver.add(max_dist >= lb)
 
 
 
-# Constraint IV: Capacity constraint
-# Constraint V: diagonal = 0
-# Constraint VI: Start and End at depot
-# Constraint VII: Obj function
+# Constraint V: Capacity constraint
+# Constraint VI: diagonal = 0
+# Constraint VII: Start and End at depot
+# Constraint VIII: Obj function
 for k in range(n):
     solver.add(Sum([paths[i][j][k] * packages_size[j] for i in range(m+1) for j in range(m)]) <= vehicles_capacity[k])
     solver.add(Sum([paths[i][i][k] for i in range(m+1)]) == 0)
     solver.add(And(Sum([paths[i][m][k] for i in range(m)]) == 1, Sum([paths[m][j][k] for j in range(m)]) == 1))
-    #Forse spostare in un altro ciclo
     solver.add(Sum([paths[i][j][k] * distances[i][j] for i in range(m+1) for j in range(m+1)]) <= max_dist)
 
 
+# Define the objective function and apply upper and lower bounds
+solver.add(max_dist <= ub)
+solver.add(max_dist >= lb)
 
-# Constraint VIII: Sym breaking
 
-for i1 in range(n):
-    for i2 in range(n):
-        if i1 < i2 and vehicles_capacity[i1] == vehicles_capacity[i2]:
-            for i in range(m):
-                for j in range(m):
-                    solver.add(Implies(And(paths[m][j][i1], paths[m][k][i2]), i < j))
 
 
 solver.minimize(max_dist)

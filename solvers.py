@@ -538,11 +538,11 @@ def solve_ilp(instance_data, timeout_time, model, solver="gecode"):
     else:
         raise ValueError("Specified MIP Model not recognized! \n Please choose between 'gurobi' and 'minizinc'")
 
-def solve_smt(instance_data, timeout_time):
+def solve_smt(instance_data, instance_n, timeout_time):
     flag = False
     try:
         # Calling the SMT solver as a subprocess, so we can apply timeout
-        subprocess.call(["python3", "./SMT/smt_subprocess.py", str(instance_data)], timeout=timeout_time)
+        subprocess.call(["python3", "./SMT/smt_subprocess.py", str(instance_n)], timeout=timeout_time)
     except subprocess.TimeoutExpired:
         print("Solution TIMEOUT")
         flag = True

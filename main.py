@@ -148,7 +148,7 @@ if __name__ == "__main__":
         elif method == "MIP":
             result = solvers.solve_ilp(instance, timeout_time, model_name)
         elif method == "SMT":
-            result = solvers.solve_smt(instance, timeout_time)
+            result = solvers.solve_smt(instance, instance_n, timeout_time)
 
         #result: "time": 300, "optimal": false, "obj": 12, "sol" : [[3, 6, 5], [4, 2], [7, 1]]
 
