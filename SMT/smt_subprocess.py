@@ -24,13 +24,13 @@ def create_result_dict(model, is_final):
     """
     global start
     best_paths_dict = {}
-    for i in range(n):
+    for i in range(m+1):
         for j in range(m+1):
-            for k in range(m+1):
+            for k in range(n):
                 if is_true(model.eval(paths[i][j][k])):
-                    best_paths_dict[(j, k)] = i
+                    best_paths_dict[(i, j)] = k
 
-    unordered_paths = [[] for i in range(n)]
+    unordered_paths = [[] for _ in range(n)]
     for k,v in best_paths_dict.items():
         unordered_paths[v].append(k)
 
@@ -92,7 +92,8 @@ ub = compute_upper_bound(distances)
 lb = compute_lower_bound(distances, num_vehicles, num_clients)
 
 # Define decision variables
-paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(m+1)] for j in range(m+1)] for i in range(n)]
+#paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(m+1)] for j in range(m+1)] for i in range(n)] #OLD
+paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(n)] for j in range(m+1)] for i in range(m+1)]
 num_visit = [Int(f"num_visit{i}") for i in range(m)]
 
 #  creating the solver
@@ -106,48 +107,53 @@ solver.set_on_model(callback)
 for i in range(m):
     solver.add(And(num_visit[i] >= 0, num_visit[i] <= m-1))
 
-
-# Each customer should be visited only once
-for i in range(n):
-    for k in range(m):
-        solver.add(Implies(Sum([paths[i][j][k] for j in range(m+1)]) == 1, Sum([paths[i][k][j] for j in range(m+1)]) == 1))
-        solver.add(And(Sum([paths[i][j][k] for i in range(n) for j in range(m + 1)]) == 1,
-                        Sum([paths[i][k][j] for j in range(m + 1) for i in range(n)]) == 1))
-
-
-# Subtour constraint
-for i in range(n):
+# Constraint I: Da capire che cazzo è
+for k in range(n):
     for j in range(m):
-        for k in range(m):
-            solver.add(Implies(paths[i][j][k], num_visit[j] < num_visit[k]))
+        solver.add(Implies(Sum([paths[i][j][k] for i in range(m+1)]) == 1, Sum([paths[j][i][k] for i in range(m+1)]) == 1))
 
-# Capacity constraint
-for i in range(n):
-    solver.add(Sum([paths[i][j][k]*packages_size[k] for k in range(m) for j in range(m+1)]) <= vehicles_capacity[i])
+# Constraint II: Each destination is reached by a courier departing from a sound origin (plus, each client is visited by only one courier)
+for j in range(m):
+    solver.add(And(Sum([paths[i][j][k] for i in range(m+1) for k in range(n)]) == 1,
+                   Sum([paths[j][i][k] for i in range(m+1) for k in range(n)]) == 1))
 
 
-# paths[i][j][j] should be False for any i and any j Diagonal != 1
-solver.add(Sum([paths[i][j][j] for j in range(m+1) for i in range(n)]) == 0)
+# Constraint III: Subtour constraint
+for k in range(n):
+    for i in range(m):
+        for j in range(m):
+            solver.add(Implies(paths[i][j][k], num_visit[i] < num_visit[j]))
 
-# Each path should begin and end at the depot
-for i in range(n):
-    solver.add(And(Sum([paths[i][m][k] for k in range(m)]) == 1, Sum([paths[i][j][m] for j in range(m)]) == 1))
+
 
 # Define the objective function and apply upper and lower bounds
 max_dist = Int("max_dist")
 solver.add(max_dist <= ub)
 solver.add(max_dist >= lb)
-for i in range(n):
-    solver.add(Sum([paths[i][j][k]*distances[j][k] for j in range(m+1) for k in range(m+1)]) <= max_dist)
 
 
-# Symmetry breaking constraint
+
+# Constraint IV: Capacity constraint
+# Constraint V: diagonal = 0
+# Constraint VI: Start and End at depot
+# Constraint VII: Obj function
+for k in range(n):
+    solver.add(Sum([paths[i][j][k] * packages_size[j] for i in range(m+1) for j in range(m)]) <= vehicles_capacity[k])
+    solver.add(Sum([paths[i][i][k] for i in range(m+1)]) == 0)
+    solver.add(And(Sum([paths[i][m][k] for i in range(m)]) == 1, Sum([paths[m][j][k] for j in range(m)]) == 1))
+    #Forse spostare in un altro ciclo
+    solver.add(Sum([paths[i][j][k] * distances[i][j] for i in range(m+1) for j in range(m+1)]) <= max_dist)
+
+
+
+# Constraint VIII: Sym breaking
+
 for i1 in range(n):
     for i2 in range(n):
         if i1 < i2 and vehicles_capacity[i1] == vehicles_capacity[i2]:
-            for j in range(m):
-                for k in range(m):
-                    solver.add(Implies(And(paths[i1][m][j], paths[i2][m][k]), j < k))
+            for i in range(m):
+                for j in range(m):
+                    solver.add(Implies(And(paths[m][j][i1], paths[m][k][i2]), i < j))
 
 
 solver.minimize(max_dist)
