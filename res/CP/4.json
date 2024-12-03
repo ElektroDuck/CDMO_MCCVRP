@@ -1,0 +1,35 @@
+{
+    "Model_A_gc_corrected_changedoutput.mzn": {
+        "time": 0,
+        "optimal": true,
+        "obj": 220,
+        "sol": [
+            [
+                2,
+                10
+            ],
+            [
+                3,
+                4
+            ],
+            [
+                6
+            ],
+            [
+                8
+            ],
+            [
+                7
+            ],
+            [
+                1
+            ],
+            [
+                5
+            ],
+            [
+                9
+            ]
+        ]
+    }
+}
