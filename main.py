@@ -146,7 +146,7 @@ if __name__ == "__main__":
         if method == "CP":
             result = solvers.solve_cp(model_name, solver_id, instance, timeout_time)
         elif method == "MIP":
-            result = solvers.solve_ilp(instance, timeout_time, model_name)
+            result = solvers.solve_mip(instance, timeout_time, model_name)
         elif method == "SMT":
             result = solvers.solve_smt(instance, instance_n, timeout_time)
 

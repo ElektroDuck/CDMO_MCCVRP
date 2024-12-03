@@ -400,8 +400,7 @@ def solve_ilp_minizinc(model_name, solver_id, instance_data, timeout_time):
 
     return {"time": total_time, "optimal": result.status == Status.OPTIMAL_SOLUTION, "obj": max_dist_compute, "sol": solution}
 
-def solve_ilp_guroby(instance_data, timeout_time):
-
+def solve_mip_gurobi(instance_data, timeout_time):
     distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
 
     #transform in numpy matrix
@@ -436,49 +435,50 @@ def solve_ilp_guroby(instance_data, timeout_time):
 
 
     # CONSTRAINTS
-    for k in VEHICLES:
-        # Updating the max_distance
-        model.addConstr(gb.quicksum(x[i,j,k]*distances[i-1][j-1] for i in NODES for j in NODES) <= max_distance)
-    # Upper e lower bound constraints
+    # Constraint I & II: bounds on objective variable
     model.addConstr(max_distance <= up_bound)
     model.addConstr(max_distance >= low_bound)
-
-    # Every vehicles is used
-    model.addConstr(gb.quicksum(y[0,k] for k in VEHICLES)==num_vehicles)
     
     for i in CLIENT:
-        # Each item has only one vehicles assigned to it
+        # Constraint III: Each client has an unique vehicle assigned to it
         model.addConstr(gb.quicksum(y[i,k] for k in VEHICLES)==1)
-        # You cannot stop on a node
+        # Constraint IV: Each client must be visited exactly once across all vehicles.
         model.addConstr(gb.quicksum(x[i,j,k] for j in NODES for k in VEHICLES)==1)
 
     for j in CLIENT:
-        # There must be a way to reach the node you are currently standing on
+        # Constrain V: There must be a way to reach the node you are currently standing on (Reduntant but reduce search space)
         model.addConstr(gb.quicksum(x[i,j,k] for i in NODES for k in VEHICLES)==1)
 
     for k in VEHICLES:
-        # Capacity constraint
+        # Constraint VI: Capacity constraint (Reduntant but reduce search space)
         model.addConstr(gb.quicksum(y[i,k]*packages_size[i-1] for i in CLIENT)<=vehicles_capacity[k-1])
-        # Diagonal = 0 (avoid loops)
+        # Constraint VII: Diagonal = 0 (avoid loops)
         model.addConstr(gb.quicksum(x[j,j,k] for j in NODES)==0)
-        # Last point is the depot
+        # Constraint VIII: Last point is the depot
         model.addConstr(gb.quicksum(x[i,0,k] for i in NODES)==1)
     
 
     for i in CLIENT:
         for k in VEHICLES:
-            # If a courier enters a node, then it must exit that node
+            # Constraint IX: If a courier enters a node, then it must exit that node
             model.addConstr(gb.quicksum(x[i,j,k] for j in NODES)==gb.quicksum(x[j,i,k] for j in NODES))
-            # If a courier is covering a client, we assign the item to it
+            # Constraint X: If a courier is covering a client, we assign the item to it
             model.addConstr(gb.quicksum(x[j,i,k] for j in NODES)==y[i,k])
     
 
-    # Subtour elimination using MTZ formulation
+    # Constraint XI: Subtour elimination using MTZ formulation
     for k in VEHICLES:
         for i in CLIENT:
             for j in CLIENT:
                 if i != j:
                     model.addConstr(d[i, k] - d[j, k] + num_clients * x[i, j, k] <= num_clients - 1)
+
+    for k in VEHICLES:
+        # Objective function
+        model.addConstr(gb.quicksum(x[i,j,k]*distances[i-1][j-1] for i in NODES for j in NODES) <= max_distance)
+
+
+
 
     # Set the time limit 
     time_limit = timeout_time - preprocessing_time
@@ -530,9 +530,9 @@ def solve_ilp_guroby(instance_data, timeout_time):
 
     return {"time": sol_time, "optimal": model.status == gb.GRB.OPTIMAL, "obj": model.objVal, "sol": solution}
 
-def solve_ilp(instance_data, timeout_time, model, solver="gecode"):
+def solve_mip(instance_data, timeout_time, model, solver="gecode"):
     if model == "gurobi":
-        return solve_ilp_guroby(instance_data, timeout_time)
+        return solve_mip_gurobi(instance_data, timeout_time)
     elif model == "minizinc":
         return solve_ilp_minizinc("ILP_model.mzn", solver, instance_data, timeout_time)
     else:
