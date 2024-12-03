@@ -1,5 +1,5 @@
 import math
-from z3 import BitVec
+from z3 import *
 
 def num_bits(value):
     """
@@ -15,35 +15,29 @@ def num_bits(value):
         return 1  # 0 needs 1 bit
     return math.floor(math.log2(value)) + 1
 
-def convert_int_bits(value, num_bits, string_var="Value"):
-    """
-    Converts a positive integer into a binary Z3 BitVec element.
-    
-    Parameters:
-    value (int): The positive integer value to convert.
-    num_bits (int): The number of bits needed to represent the value.
-    string_var (str): The name associated with the variable
 
-    Returns:
-    BitVec: The Z3 BitVec representation of the value.
-    """
-    if value < 0:
-        raise ValueError("Value must be positive.")
-    if num_bits < 1:
-        raise ValueError("Number of bits must be at least 1.")
-    
-    # Create a Z3 BitVec element with the specified number of bits
-    return BitVec(string_var+f"_{value}", num_bits)
+def int_to_bin(value, bits):
+    """Converts a positive integer into a binary representation of True/False using #bits = bits
 
-def bitvec_to_int(bitvec, model):
-    """
-    Converts a Z3 BitVec value to an integer using the provided model.
-    
     Args:
-        bitvec (BitVec): The BitVec value from a Z3 solver.
-        model (ModelRef): The Z3 model containing the solution.
+        value (int): the integer to convert
+        bits (int): the number of bits of the output
 
     Returns:
-        int: The integer value of the BitVec.
+        list[bool]: the binary representation of the integer
     """
-    return model.eval(bitvec).as_long()
+    return [(value%(2**(i+1)) // 2**i)==1 for i in range(bits-1,-1,-1)]
+
+def bin_to_int(value):
+    """
+    Converts a binary number of 1s and 0s into its integer form
+
+    Parameters:
+        value (list[int]): the binary number to convert
+
+    Returns:
+        int: the converted integer representation of x
+    """
+    n = len(value)
+    x = sum(2**(n-i-1) for i in range(n) if value[i] == 1)
+    return x
