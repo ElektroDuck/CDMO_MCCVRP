@@ -107,7 +107,7 @@ def sum_binary(a_bin, b_bin, d_bin, name):
 
     return And(And(clauses), sub_sum_formula)
 
-def conditional_sum_K_bin(x, alpha, delta, name):
+def sum_K_bin(x, alpha, delta, name):
     """
     Encodes into a SAT formula the constraint {delta = sum_over_j(alpha[j] | x[j] == True)}
 

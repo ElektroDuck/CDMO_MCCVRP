@@ -71,26 +71,3 @@ def link_true_indices(l1, l2):
     constraint = And(link_constraint, Not(l1[-1]), Not(l2[0]))
     
     return constraint
-
-# Test
-l1 = [Bool(f"l1_{i}") for i in range(5)]  # Example: l1 has 5 variables
-l2 = [Bool(f"l2_{i}") for i in range(5)]  # l2 has 5 variables
-
-# Create the constraint
-exaclty_one_l1_constraint = exactly_one(l1)
-link_constraint = link_true_indices(l1, l2)
-
-# Solver
-solver = Solver()
-solver.add(exaclty_one_l1_constraint)
-solver.add(l1[0])
-solver.add(link_constraint)
-
-# Check satisfiability
-if solver.check() == sat:
-    model = solver.model()
-    print("Satisfiable assignment:")
-    for b in l1 + l2:
-        print(f"{b} = {model[b]}")
-else:
-    print("Unsatisfiable")
