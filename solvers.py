@@ -539,14 +539,25 @@ def solve_mip(instance_data, timeout_time, model, solver="gecode"):
     else:
         raise ValueError("Specified MIP Model not recognized! \n Please choose between 'gurobi' and 'minizinc'")
 
-def solve_smt(instance_data, instance_n, timeout_time):
+def solve_smt(model_name, instance_data, instance_n, timeout_time):
     flag = False
-    try:
-        # Calling the SMT solver as a subprocess, so we can apply timeout
-        subprocess.call(["python3", "./SMT/smt_subprocess.py", str(instance_n)], timeout=timeout_time)
-    except subprocess.TimeoutExpired:
-        print("Solution TIMEOUT")
-        flag = True
+
+    if model_name == "base":
+        try:
+            # Calling the SMT solver as a subprocess, so we can apply timeout
+            subprocess.call(["python3", "./SMT/smt_subprocess.py", str(instance_n)], timeout=timeout_time)
+        except subprocess.TimeoutExpired:
+            print("Solution TIMEOUT")
+            flag = True
+    elif model_name == "aux_variable":
+        try:
+            # Calling the SMT solver as a subprocess, so we can apply timeout
+            subprocess.call(["python3", "./SMT/smt_subprocess_knapsack.py", str(instance_n)], timeout=timeout_time)
+        except subprocess.TimeoutExpired:
+            print("Solution TIMEOUT")
+            flag = True
+    else:
+        raise Exception("model name must be between [base/aux_variable] for SMT")
 
     # Saving results
     try:
