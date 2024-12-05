@@ -10,6 +10,7 @@ from minizinc import Instance, Model, Solver, Status
 
 import gurobipy as gb
 
+import SAT.sat_model as sat_model
 
 BASE_PATH = os.getcwd()
 
@@ -585,3 +586,14 @@ def solve_smt(instance_data, instance_n, timeout_time):
 
     return result_dict
 
+def solve_sat(instance_data, instance_n, timeout_time):
+    distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
+    low_bound, up_bound, _ = calculate_mccrp_bounds(distances)
+    sat_result =  sat_model.sat_model(num_vehicles, num_clients, vehicles_capacity, packages_size, distances, up_bound, low_bound, display_solution=True, timeout_duration=timeout_time)
+    result = {
+        "time": sat_result[1],
+        "optimal": (not sat_result[1]>=timeout_time), #if the time is less than the timeout, then the solution is considered optimal
+        "obj": sat_result[0],
+        "sol": sat_result[2]
+    }
+    return result
