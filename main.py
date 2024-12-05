@@ -149,8 +149,17 @@ if __name__ == "__main__":
             result = solvers.solve_mip(instance, timeout_time, model_name)
         elif method == "SMT":
             result = solvers.solve_smt(instance, instance_n, timeout_time)
+        elif method == "SAT":
+            result = solvers.solve_sat(instance, instance_n, timeout_time)
+        else:
+            print(f"Method {method} not recognized. Please select one of the following: CP, MIP, SMT, SAT")
+            exit()
 
         #result: "time": 300, "optimal": false, "obj": 12, "sol" : [[3, 6, 5], [4, 2], [7, 1]]
+
+        print("result:")
+        print(result)
+        
 
         if update_json:
             check_model_folder_exists(method)
