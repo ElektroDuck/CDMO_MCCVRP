@@ -47,4 +47,4 @@ def compute_bounds(distances, num_vehicles, num_clients):
 num_vehicles, num_clients, vehicles_capacity, packages_size, distances = extract_data_from_dat(instance_number)
 low_bound, up_bound = compute_bounds(distances, num_vehicles, num_clients)
 
-sat_model = sat_model(num_vehicles, num_clients, vehicles_capacity, packages_size, distances, up_bound, low_bound, display_solution=True, timeout_duration=300, search = "Base")
+sat_model = sat_model(num_vehicles, num_clients, vehicles_capacity, packages_size, distances, up_bound, low_bound, display_solution=True, timeout_duration=300, search = "Binary")

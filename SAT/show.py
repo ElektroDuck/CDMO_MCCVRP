@@ -31,4 +31,4 @@ def showMCCVRP(orders, distances_bin, obj_value, assignments):
     for courier in range(m):
         print("Depo -> " +
               ' -> '.join([str(node) for node in routes[courier]]) +
-              f' -> Depo: distane {distances[courier]}')
+              f' -> Depo: distance {distances[courier]}')
