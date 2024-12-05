@@ -1,5 +1,10 @@
 import time
 from z3 import *
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from convertion_functions import *
 from binary_logic import *
 from binary_operations import *
