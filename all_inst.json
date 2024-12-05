@@ -16,8 +16,14 @@
     },
     "SMT" : {
         "Models" : {
-            "SMT" : []
+            "base" : [],
+            "aux_variable" : []
         }
     },
-    "instances" : "1-21"
+    "SAT" : {
+        "Models" : {
+            "base" : []
+        }
+    },
+    "instances" : "1"
 }

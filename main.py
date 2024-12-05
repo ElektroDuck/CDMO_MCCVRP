@@ -148,7 +148,7 @@ if __name__ == "__main__":
         elif method == "MIP":
             result = solvers.solve_mip(instance, timeout_time, model_name)
         elif method == "SMT":
-            result = solvers.solve_smt(instance, instance_n, timeout_time)
+            result = solvers.solve_smt(model_name, instance, instance_n, timeout_time)
         elif method == "SAT":
             result = solvers.solve_sat(instance, instance_n, timeout_time)
         else:
