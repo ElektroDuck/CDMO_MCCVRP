@@ -156,11 +156,7 @@ if __name__ == "__main__":
             exit()
 
         #result: "time": 300, "optimal": false, "obj": 12, "sol" : [[3, 6, 5], [4, 2], [7, 1]]
-
-        print("result:")
-        print(result)
-        
-
+    
         if update_json:
             check_model_folder_exists(method)
             check_instance_file_exists(instance_n, method)

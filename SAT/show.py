@@ -13,8 +13,8 @@ def showMCCVRP(orders, distances_bin, obj_value, assignments):
     """
     distances = [bin_to_int(d) for d in distances_bin]
 
-    print(f"-----------Objective value: {obj_value}-----------")
-    print(f"------------------Routes-----------------")
+    print(f"Objective value: {obj_value}")
+    print(f"Solution found: ")
     m = len(assignments)
     n = len(assignments[0])
     routes = [[0 for j in range(n)] for i in range(m)]
@@ -29,6 +29,6 @@ def showMCCVRP(orders, distances_bin, obj_value, assignments):
 
     routes = [[x for x in row if x != 0] for row in routes] # remove trailing zeros
     for courier in range(m):
-        print("Origin --> " +
-              ' --> '.join([str(node) for node in routes[courier]]) +
-              f' --> Origin: travelled {distances[courier]}')
+        print("Depo -> " +
+              ' -> '.join([str(node) for node in routes[courier]]) +
+              f' -> Depo: distane {distances[courier]}')
