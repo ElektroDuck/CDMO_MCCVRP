@@ -8,10 +8,8 @@ from utils import *
 from cycles import *
 from show import *
 
-def sat_model(num_couriers, num_items, capacity, size, distances_int, upper_bound, lower_bound, display_solution=True, timeout_duration=300):
+def sat_model(num_couriers, num_items, capacity, size, distances_int, upper_bound, lower_bound, display_solution=True, timeout_duration=300, search="Binary"):
     ### VARIABLES
-
-    start_time = time.time()
 
     nodes= num_items+1 #considering the depot as the n+1 location
     # assignments courier-item
@@ -109,29 +107,82 @@ def sat_model(num_couriers, num_items, capacity, size, distances_int, upper_boun
 
     solver.check()
 
-    solver.set('timeout', millisecs_left(time.time(), timeout))
-    while solver.check() == z3.sat:
+    if search == "Base":
 
-        model = solver.model()
-        obj_value = obj_function(model, distances)
-        print(f"This model obtained objective value: {obj_value} after {round(time.time() - encoding_time, 1)}s")
+        solver.set('timeout', millisecs_left(time.time(), timeout))
+        while solver.check() == z3.sat:
 
-        if obj_value <= lower_bound:
-            break
+            model = solver.model()
+            obj_value = obj_function(model, distances)
+            print(f"This model obtained objective value: {obj_value} after {round(time.time() - encoding_time, 1)}s")
 
-        upper_bound = obj_value - 1
+            if obj_value <= lower_bound:
+                break
+
+            upper_bound = obj_value - 1
+            upper_bound_bin = int_to_bin(upper_bound, num_bits(upper_bound))
+
+            solver.pop()
+            solver.push()
+
+            solver.add(AllLessEq_bin(distances, upper_bound_bin))
+            now = time.time()
+            if now >= timeout:
+                break
+            solver.set('timeout', millisecs_left(now, timeout))
+
+    elif search == "Binary":
+        
         upper_bound_bin = int_to_bin(upper_bound, num_bits(upper_bound))
-
-        solver.pop()
-        solver.push()
-
+        print(type(distances[0]))
+        print(type(upper_bound_bin[0]))
+        for i in range(len(upper_bound_bin)):
+            upper_bound_bin[i] = bool(upper_bound_bin)
         solver.add(AllLessEq_bin(distances, upper_bound_bin))
-        now = time.time()
-        if now >= timeout:
-            break
-        solver.set('timeout', millisecs_left(now, timeout))
 
-     # compute time taken
+        lower_bound_bin = int_to_bin(lower_bound, num_bits(lower_bound))
+        for i in range(len(lower_bound_bin)):
+            lower_bound_bin[i] = bool(lower_bound_bin)
+        solver.add(AtLeastOneGreaterEq_bin(distances, lower_bound_bin))
+
+        while lower_bound <= upper_bound:
+            mid = int((lower_bound + upper_bound)/2)
+            mid_bin = int_to_bin(mid, num_bits(mid))
+            solver.add(AllLessEq_bin(distances, mid_bin))
+
+            now = time.time()
+            if now >= timeout:
+                break
+            solver.set('timeout', millisecs_left(now, timeout))
+            print(f"Trying with bounds: [{lower_bound}, {upper_bound}] and posing obj_val <= {mid}")
+
+            if solver.check() == z3.sat:
+                model = solver.model()
+                obj_value = obj_function(model, distances)
+                print(f"This model obtained objective value: {obj_value} after {round(time.time() - encoding_time, 1)}s")
+
+                if obj_value <= 1:
+                    break
+
+                upper_bound = obj_value - 1
+                upper_bound_bin = int_to_bin(upper_bound, num_bits(upper_bound))
+
+
+            else:
+                print(f"This model failed after {round(time.time() - encoding_time, 1)}s")
+
+                lower_bound = mid + 1
+                lower_bound_bin = int_to_bin(lower_bound, num_bits(lower_bound))
+
+            solver.pop()
+            solver.push()
+            solver.add(AllLessEq_bin(distances, upper_bound_bin))
+            solver.add(AtLeastOneGreaterEq_bin(distances, lower_bound_bin))
+
+    else:
+        raise ValueError(f"Input parameter [search] mush be either 'Linear' or 'Binary', was given '{search}'")
+
+    # compute time taken
     end_time = time.time()
     if end_time >= timeout:
         solving_time = timeout_duration    # solving_time has upper bound of timeout_duration if it timeouts
