@@ -110,7 +110,7 @@ lb = compute_lower_bound(distances, num_vehicles, num_clients)
 # Define decision variables
 paths = [[[Bool("courier[%i,%i,%i]" % (i, j, k)) for k in range(n)] for j in range(m+1)] for i in range(m+1)]
 num_visit = [Int(f"num_visit{i}") for i in range(m)]
-knapsack = [[Bool("has[%i,%i]" % (i, k)) for k in range(n)] for i in range(m)]
+y = [[Bool("has[%i,%i]" % (i, k)) for k in range(n)] for i in range(m)]
 
 #  creating the solver
 solver = Optimize()
@@ -128,10 +128,9 @@ for j in range(m):
     for k in range(n):
         # Constraint II: Coherence (If i reach a client, i then must depart from that client)
         solver.add(Sum([paths[i][j][k] for i in range(m+1)]) == Sum([paths[j][i][k] for i in range(m+1)]))
-    # Constraint III: A client is served by only one courier
 
 
-# Constraint IV: Subtour constraint
+# Constraint III: Subtour constraint
 for k in range(n):
     for i in range(m):
         for j in range(m):
@@ -141,25 +140,26 @@ for k in range(n):
 
 max_dist = Int("max_dist")
 
-# Constraint V: Capacity constraint
-# Constraint VI: diagonal = 0
-# Constraint VII: Start and End at depot
-# Constraint VIII: Obj function
+# Constraint IV: diagonal = 0
+# Constraint V: Start and End at depot
+# Constraint VI: Obj function
 for k in range(n):
     solver.add(Sum([paths[i][i][k] for i in range(m+1)]) == 0)
     solver.add(And(Sum([paths[i][m][k] for i in range(m)]) == 1, Sum([paths[m][j][k] for j in range(m)]) == 1))
     solver.add(Sum([paths[i][j][k] * distances[i][j] for i in range(m+1) for j in range(m+1)]) <= max_dist)
 
-# Channelling
+# Constraint VII: Channelling
 for k in range(n):
     for j in range(m):
-        solver.add(Sum([paths[i][j][k] for i in range(m+1)]) == knapsack[j][k]) # Modified
+        solver.add(Sum([paths[i][j][k] for i in range(m+1)]) == y[j][k]) # Modified
 
+# Constraint VIII: Capacity constraint
 for k in range(n):
-    solver.add(Sum([knapsack[i][k] * packages_size[i] for i in range(m)]) <= vehicles_capacity[k]) # Modified
+    solver.add(Sum([y[i][k] * packages_size[i] for i in range(m)]) <= vehicles_capacity[k]) # Modified
 
+# Constraint IX: Uniqueness
 for j in range(m):
-    solver.add(Sum([knapsack[j][k] for k in range(n)]) == 1) # Modified
+    solver.add(Sum([y[j][k] for k in range(n)]) == 1) # Modified
 
 # Define the objective function and apply upper and lower bounds
 solver.add(max_dist <= ub)

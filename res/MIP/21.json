@@ -188,11 +188,5 @@
                 133
             ]
         ]
-    },
-    "gurobi_2": {
-        "time": 300,
-        "optimal": false,
-        "obj": 0,
-        "sol": []
     }
 }

@@ -1,5 +1,11 @@
 {
-    "SMT": {
+    "base": {
+        "time": 300,
+        "optimal": false,
+        "obj": 0,
+        "sol": []
+    },
+    "aux_variable": {
         "time": 300,
         "optimal": false,
         "obj": 0,

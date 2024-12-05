@@ -1,13 +1,13 @@
 {
-    "sat": {
+    "base": {
         "time": 0,
         "optimal": true,
         "obj": 12,
         "sol": [
             [
-                3,
+                5,
                 6,
-                5
+                3
             ],
             [
                 4,

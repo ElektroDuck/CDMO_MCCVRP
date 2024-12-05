@@ -2,6 +2,7 @@
 Multi Currier Capacitated Vehicle Routing Problem
 
 ## Virtual Enviroment
+TODO: Tutta sta parte qua in teoria non serve a niente no? tanto si usa il docker
 
 ### LINUX
 
@@ -38,86 +39,121 @@ dove la guida dice che YOUR_INSTALLATION_FOLDER dovrebbe essere tipo ```C:\Progr
 con me ha funzionato con ```setx PATH "%PATH%;C:\Program Files\MiniZinc```
 
 
-# Docker
 
-build the container
-```docker build -t cdmo_project .```
+# Docker Instructions
 
-work on the terminal of the container
-```docker run -it cdmo_project```
+To run the project correctly, follow these steps:
 
-from now on the terminal opens and we can execute commands inside the virtual machine
+### Step 1: Build the Docker Container
+To build the docker container, execute this command in the root of the project. If Docker is not installed in your system, please follow the official [documentation](https://docs.docker.com/engine/install/).
 
-Example: 
-```python run_model.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1,3,4 --solver gecode --timeout 20```
-
-# How to run all the instances 
-To run all the models in all the different configurations: 
-
-```
-python3 run_all_instances.py 
+```bash
+docker build -t cdmo_project .
 ```
 
-This script excecute all the model described in the report, producing the result in .json format that are available in the `res/` folder
-The configuration is loaded from the file `all_inst.json`. It is possible to modify this file in order to devine new custome executions.  
+### Step 2: Start the Container Terminal
 
-# How to run the python code
-Example of base command 
-
-```
-python main.py --method selected_method --model selected_model --instance number of the instance --solver selected_solver --timeout your_timeout --update_json True
+```bash
+docker run -it cdmo_project
 ```
 
-## Flags
-| Flag            | Default | Type | required | Description |
-|--------------------|---------|------|----------| ----------- |
-| `--method`         | -       | str  | True     | The method to use (`CP`, `SMT`, `MIP`) |
-| `--model`          | -       | str  | True     | The name of the model to use, the values depends on the used method, see below |
-| `--instance`       | 1       | str  | True     | The number of the instances to solve, can be a specific instance (e.g. `--instance 1`), solve in a range (e.g. `--instance 1-10`), solve all (e.g. `--instance all`) |
-| `--solver`         | -       | str  | False    | The solver to use. The values depends on the method, see below |
-| `--timeout`        | 300     | int  | False    | Timeout time, expressed in seconds |   
-| `--int_res`        | False   | bool | False    | Show intermediate results, not available for all the method and models |  
-| `--update_json`    | False   | bool | False    | Update the solutions contained in the json file |   
+You will now be inside the container's terminal, where you can execute commands as if within a virtual machine.
 
-## Methods 
+**Example Command:**
+This is an example command to run the `CP` model named `Model_A_gc_corrected_changedoutput.mzn` on the instances `1,3,4` using `gecode` with a timeout of `20` seconds
+```bash
+python run_model.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance 1,3,4 --solver gecode --timeout 20
+```
 
-The explanation of the implemented models can be founf in the file `report.pdf`
+---
+
+# Running All Instances
+
+To run all models with different configurations, use the following script:
+
+```bash
+python3 run_all_instances.py
+```
+
+This script executes all models described in the report and generates results in `.json` format, saved in the `res/` folder. 
+
+Configurations are loaded from the `all_inst.json` file, which can be modified to define custom executions.
+
+---
+
+# Running Python Code
+To run a single model using particular instructions, refer to this section of the readme
+
+### Example Base Command
+
+```bash
+python main.py --method selected_method --model selected_model --instance instance_number --solver selected_solver --timeout timeout_duration --update_json True
+```
+
+### Flags
+
+| Flag            | Default | Type  | Required | Description                                                                                          |
+|------------------|---------|-------|---------|------------------------------------------------------------------------------------------------------|
+| `--method`       | -       | str   | Yes     | The method to use (`CP`, `SMT`, `MIP`)                                                              |
+| `--model`        | -       | str   | Yes     | The name of the model to use, based on the chosen method.                                            |
+| `--instance`     | 1       | str   | Yes     | Instance to solve: single (`--instance 1`), range (`--instance 1-10`), or all (`--instance all`).   |
+| `--solver`       | -       | str   | No      | Solver to use, based on the method.                                                                 |
+| `--timeout`      | 300     | int   | No      | Timeout in seconds.                                                                                 |
+| `--int_res`      | False   | bool  | No      | Display intermediate results (not available for all methods/models).                                |
+| `--update_json`  | False   | bool  | No      | Update the solutions in the JSON file.                                                              |
+
+---
+
+## Methods
+
+Detailed explanations of the implemented models are available in `report.pdf`.
 
 ### CP
-```
+
+Example Command:
+
+```bash
 python main.py --method CP --model Model_A_gc_corrected_changedoutput.mzn --instance all --solver gecode --timeout 300 --update_json True
-``` 
+```
 
-The CP method can be runned with the following flags: 
-- --method:  CP
-- --model: TODO INSERT MODELS 
-- --solver: TODO, insert solvers
+Supported flags:
+- `--method`: CP
+- `--model`: (Specify your CP models)
+- `--solver`: (Specify supported solvers for CP)
 
+---
 
 ### SMT
-The SMT has been implemented through the z3 solver. The code can be run as: 
 
-```
+Implemented using the Z3 solver. Example Command:
+
+```bash
 python main.py --method SMT --model z3_solver --instance all --timeout 300 --update_json True
 ```
 
-The SMT method can be runned with the following flags: 
-- --method:  `SMT`
-- --model: `z3_solver`
+Supported flags:
+- `--method`: SMT
+- `--model`: `base` / `aux_variable`
 
-The falgs `--solver` and  `--int_res` aren't available for this methodology.
+Note: `--solver` and `--int_res` are not available for this method.
 
-### MIP 
+---
 
-The MIP encoding has been proposed with 2 different languages, Gurobi and Minizinc. It is possible to choose which one to use usign the `--model` flag. The Minizinc version is gonna use the `gecode` solver. 
+### MIP
 
-```python main.py --method MIP --model gurobi --instance all --timeout 300 --update_json True```
+The MIP encoding is available in two variants: Gurobi and MiniZinc. Use the `--model` flag to select one. The MiniZinc variant uses the `gecode` solver.
 
-The MIP method can be runned with the following flags: 
-- --method:  `MIP`
-- --model: `gurobi`, `minizinc`    
+Example Command:
 
-The falgs `--solver` and  `--int_res` aren't available for this methodology.
+```bash
+python main.py --method MIP --model gurobi --instance all --timeout 300 --update_json True
+```
+
+Supported flags:
+- `--method`: MIP
+- `--model`: `gurobi`, `minizinc`
+
+Note: `--solver` and `--int_res` are not available for this method.
 
 
 
