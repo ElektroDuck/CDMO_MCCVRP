@@ -1,6 +1,9 @@
 import time
 from z3 import *
 
+
+import json
+import argparse
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +16,32 @@ from utils import *
 from cycles import *
 from show import *
 
-def sat_model(num_couriers, num_items, capacity, size, distances_int, upper_bound, lower_bound, display_solution=True, timeout_duration=300, search="Binary"):
+def creat_solution_dict(paths, time, optimal, obj_value):
+    return {
+        "time" : time if time <= 300 else 300,
+        "optimal" : optimal,
+        "obj" : obj_value,
+        "sol" : paths
+    }
+
+#Read the instance utility function
+def extract_data_from_dat(instance_number):
+    instance_number = str(instance_number) if instance_number >= 10 else "0"+str(instance_number)
+    instance_path = f"{os.getcwd()}/Instances/inst{instance_number}.dat"
+    with open(instance_path, 'r') as file:
+        lines = file.readlines()
+    
+    num_vehicles = int(lines[0].strip())
+    num_clients = int(lines[1].strip())
+    
+    vehicles_capacity = list(map(int, lines[2].strip().split()))
+    packages_size = list(map(int, lines[3].strip().split()))
+
+    distances = [list(map(int, line.strip().split())) for line in lines[4:]]
+
+    return num_vehicles, num_clients, vehicles_capacity, packages_size, distances
+
+def sat_model(num_couriers, num_items, capacity, size, distances_int, upper_bound, lower_bound, display_solution=True, timeout_duration=300, search="Base"):
     ### VARIABLES
 
     nodes= num_items+1 #considering the depot as the n+1 location
@@ -110,7 +138,7 @@ def sat_model(num_couriers, num_items, capacity, size, distances_int, upper_boun
 
     solver.push()
 
-    solver.check()
+    solv_res = solver.check()
 
     if search == "Base":
 
@@ -212,4 +240,37 @@ def sat_model(num_couriers, num_items, capacity, size, distances_int, upper_boun
 
     deliveries = retrieve_routes(Ord, Ass)
 
-    return (obj_value, solving_time, deliveries)
+    
+    # Run the solver
+    if solv_res == sat:
+        res_dict = creat_solution_dict(deliveries, solving_time, True, obj_value)
+        with open("tmp_output.json", "w") as f:
+            json.dump(res_dict, f)
+
+    # If the model is not sat...
+    else:
+        result_dict = {
+        "time" : 300,
+        "optimal" : False,
+        "obj" : 0,
+        "sol" : []
+        }
+        with open("tmp_output.json", "w") as f:
+            json.dump(result_dict, f)
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("inst")
+    parser.add_argument("ub")
+    parser.add_argument("lb")
+    args = parser.parse_args()
+
+    instance_number = int(args.inst)
+    ub = int(args.ub)
+    lb = int(args.lb)
+
+    num_vehicles, num_clients, vehicles_capacity, packages_size, distances = extract_data_from_dat(instance_number)
+    obj_value, solving_time, deliveries = sat_model(num_vehicles, num_clients, vehicles_capacity, packages_size, distances, ub, lb)
+    #TODO: salvare su file questo output

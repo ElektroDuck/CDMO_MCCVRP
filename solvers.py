@@ -600,11 +600,47 @@ def solve_smt(model_name, instance_data, instance_n, timeout_time):
 def solve_sat(instance_data, instance_n, timeout_time):
     distances, num_vehicles, num_clients, vehicles_capacity, packages_size = instance_data["distances"], instance_data["num_vehicles"], instance_data["num_clients"], instance_data["vehicles_capacity"], instance_data["packages_size"]
     low_bound, up_bound, _ = calculate_mccrp_bounds(distances)
-    sat_result =  sat_model.sat_model(num_vehicles, num_clients, vehicles_capacity, packages_size, distances, up_bound, low_bound, display_solution=True, timeout_duration=timeout_time, search="Binary")
-    result = {
-        "time": sat_result[1],
-        "optimal": (not sat_result[1]>=timeout_time), #if the time is less than the timeout, then the solution is considered optimal
-        "obj": sat_result[0],
-        "sol": sat_result[2]
-    }
-    return result
+    flag = False
+    try:
+        # Calling the SMT solver as a subprocess, so we can apply timeout
+        subprocess.call(["python3", "./SAT/sat_model.py", str(instance_n), str(up_bound), str(low_bound)], timeout=timeout_time)
+    except subprocess.TimeoutExpired:
+        print("Solution TIMEOUT")
+        flag = True
+
+    try:
+        with open("tmp_output.json", "r") as f:
+            file = f.readlines()[0]
+        result_dict = json.loads(file)
+        if flag: 
+            result_dict["time"] = 300
+            result_dict["optimal"] = False
+        
+        sol = result_dict["sol"]
+        print_sol = [[instance_data['num_clients']] + sublist + [instance_data['num_clients']]  for sublist in sol]
+        
+        print_sol = {key: value for key, value in enumerate(print_sol)}
+
+        distances = compute_distances(instance_data["distances"], print_sol, instance_data["num_vehicles"])
+        print(solution_to_string(print_sol, distances))
+
+        for i in range(len(sol)):
+            sol[i] = [x+1 for x in sol[i]]
+    except:
+        result_dict = {
+            "time" : 300,
+            "optimal" : False,
+            "obj" : 0,
+            "sol" : []
+        }
+    
+    #print results 
+    print("\n"+"*"*50+"\n")
+    print("Optimal solution: ", result_dict["optimal"])
+    print("Objective function value: ", result_dict["obj"])
+    print("Time: ", result_dict["time"])
+
+    if os.path.exists("tmp_output.json"):
+        os.remove("tmp_output.json")
+
+    return result_dict
