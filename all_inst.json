@@ -1,0 +1,43 @@
+{
+
+    "MIP" : {
+        "Models" : {
+            "gurobi" : [],
+            "minizinc" : [
+                "gecode", "y"
+            ]
+        }
+    },
+    "CP" : {
+        "Models" : {
+            "Model_A.mzn" : [
+                "gecode", "y"
+            ],
+            "Model_A_opt_1_10.mzn" : [
+                "gecode", "y"
+            ],  
+            "Model_A_opt_11_21.mzn" : [
+                "gecode", "y"
+            ],
+            "Model_A_no_sb.mzn" : [
+                "gecode", "n"
+            ],
+            "Model_A_opt_chuffed.mzn" : [
+                "chuffed", "y"
+            ]
+        }
+    },
+    "SMT" : {
+        "Models" : {
+            "base" : [],
+            "aux_variable" : []
+        }
+    },
+    "SAT" : {
+        "Models" : {
+            "Base" : [],
+            "Binary" : []
+        }
+    },
+    "instances" : "1-21"
+}

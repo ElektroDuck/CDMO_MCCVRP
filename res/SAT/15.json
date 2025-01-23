@@ -1,0 +1,14 @@
+{
+    "Base": {
+        "time": 300,
+        "optimal": false,
+        "obj": 0,
+        "sol": []
+    },
+    "Binary": {
+        "time": 300,
+        "optimal": false,
+        "obj": 0,
+        "sol": []
+    }
+}

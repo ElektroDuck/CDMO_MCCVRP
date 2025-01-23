@@ -1,0 +1,20 @@
+{
+    "gurobi": {
+        "time": 300,
+        "optimal": false,
+        "obj": 0,
+        "sol": []
+    },
+    "minizinc": {
+        "time": 300,
+        "optimal": false,
+        "obj": 0,
+        "sol": []
+    },
+    "gurobi_noredundant": {
+        "time": 300,
+        "optimal": false,
+        "obj": 0,
+        "sol": []
+    }
+}

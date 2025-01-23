@@ -1,0 +1,42 @@
+{
+    "openFiles": [
+        "Baseline_ModelB.mzn",
+        "ModelA_optimized.mzn",
+        "Model_A.mzn",
+        "Model_A_gc_corrected.mzn",
+        "Model_A_gc.mzn"
+    ],
+    "openTab": 3,
+    "projectFiles": [
+        "Baseline_ModelB.mzn",
+        "Model2.mzn",
+        "ModelA_optimized.mzn",
+        "Model_A.mzn",
+        "Model_A_gc.mzn",
+        "Model_A_gc_corrected.mzn",
+        "../../Instances/CP_instances/inst01.dzn",
+        "../../Instances/CP_instances/inst02.dzn",
+        "../../Instances/CP_instances/inst03.dzn",
+        "../../Instances/CP_instances/inst04.dzn",
+        "../../Instances/CP_instances/inst05.dzn",
+        "../../Instances/CP_instances/inst06.dzn",
+        "../../Instances/CP_instances/inst07.dzn",
+        "../../Instances/CP_instances/inst08.dzn",
+        "../../Instances/CP_instances/inst09.dzn",
+        "../../Instances/CP_instances/inst10.dzn",
+        "../../Instances/CP_instances/inst11.dzn",
+        "../../Instances/CP_instances/inst12.dzn",
+        "../../Instances/CP_instances/inst13.dzn",
+        "../../Instances/CP_instances/inst14.dzn",
+        "../../Instances/CP_instances/inst15.dzn",
+        "../../Instances/CP_instances/inst16.dzn",
+        "../../Instances/CP_instances/inst17.dzn",
+        "../../Instances/CP_instances/inst18.dzn",
+        "../../Instances/CP_instances/inst19.dzn",
+        "../../Instances/CP_instances/inst20.dzn",
+        "../../Instances/CP_instances/inst21.dzn"
+    ],
+    "selectedBuiltinConfigId": "org.gecode.gecode",
+    "selectedBuiltinConfigVersion": "6.3.0",
+    "version": 106
+}

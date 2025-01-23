@@ -1,0 +1,102 @@
+{
+    "Model_A.mzn": {
+        "time": 0,
+        "optimal": true,
+        "obj": 12,
+        "sol": [
+            [
+                5,
+                4,
+                2
+            ],
+            [
+                6,
+                3
+            ],
+            [
+                7,
+                1
+            ]
+        ]
+    },
+    "Model_A_opt_1_10.mzn": {
+        "time": 0,
+        "optimal": true,
+        "obj": 12,
+        "sol": [
+            [
+                5,
+                6,
+                3
+            ],
+            [
+                2,
+                4
+            ],
+            [
+                7,
+                1
+            ]
+        ]
+    },
+    "Model_A_opt_11_21.mzn": {
+        "time": 300,
+        "optimal": false,
+        "obj": 12,
+        "sol": [
+            [
+                3,
+                6,
+                5
+            ],
+            [
+                2,
+                4
+            ],
+            [
+                7,
+                1
+            ]
+        ]
+    },
+    "Model_A_no_sb.mzn": {
+        "time": 300,
+        "optimal": false,
+        "obj": 12,
+        "sol": [
+            [
+                3,
+                6,
+                5
+            ],
+            [
+                2,
+                4
+            ],
+            [
+                7,
+                1
+            ]
+        ]
+    },
+    "Model_A_opt_chuffed.mzn": {
+        "time": 0,
+        "optimal": true,
+        "obj": 12,
+        "sol": [
+            [
+                5,
+                4,
+                2
+            ],
+            [
+                6,
+                3
+            ],
+            [
+                7,
+                1
+            ]
+        ]
+    }
+}
